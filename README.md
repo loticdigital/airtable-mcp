@@ -88,9 +88,7 @@ npm run build
 2. The Airtable MCP server should be listed in the "Connected MCP Servers" section
 3. Test with a simple command:
 ```json
-{
-  "name": "list_bases"
-}
+List all bases
 ```
 
 ## Features
