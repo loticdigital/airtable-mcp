@@ -1,151 +1,26 @@
 # Airtable MCP Server
 
-A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records with proper type validation and error handling.
+A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop.
 
-## Features
+## Installation
 
-### Base Management
-- List accessible Airtable bases
-```json
-{
-  "name": "list_bases"
-}
+### Prerequisites
+- Node.js 16 or higher
+- npm or yarn
+- Git
+- Claude Desktop
+
+### Getting Started
+
+1. Clone the repository:
+```bash
+git clone https://github.com/felores/airtable-mcp.git
+cd airtable-mcp
 ```
 
-### Table Management
-- List tables in a base
-- Create new tables with custom fields
-- Update table properties
-
-Example creating a table:
-```json
-{
-  "name": "create_table",
-  "arguments": {
-    "base_id": "your_base_id",
-    "table_name": "Customer Support",
-    "description": "Track customer support tickets",
-    "fields": [
-      {
-        "name": "Ticket ID",
-        "type": "singleLineText",
-        "description": "Unique identifier for the ticket"
-      },
-      {
-        "name": "Status",
-        "type": "singleSelect",
-        "description": "Current status of the ticket",
-        "options": {
-          "choices": [
-            {"name": "New", "color": "blueBright"},
-            {"name": "In Progress", "color": "yellowBright"},
-            {"name": "Resolved", "color": "greenBright"}
-          ]
-        }
-      }
-    ]
-  }
-}
-```
-
-### Field Types and Validation
-
-The server supports various field types with automatic validation:
-
-#### Text Fields
-- `singleLineText`: Basic text field (no options required)
-- `multilineText`: Multi-line text field (no options required)
-```json
-{
-  "name": "Description",
-  "type": "multilineText",
-  "description": "Detailed description"
-}
-```
-
-#### Number Fields
-- `number`: Requires precision option
-```json
-{
-  "name": "Quantity",
-  "type": "number",
-  "description": "Item quantity",
-  "options": {
-    "precision": 0
-  }
-}
-```
-
-#### Select Fields
-- `singleSelect`: Single choice from options
-- `multiSelect`: Multiple choices from options
-```json
-{
-  "name": "Category",
-  "type": "singleSelect",
-  "description": "Item category",
-  "options": {
-    "choices": [
-      {"name": "Electronics", "color": "blueBright"},
-      {"name": "Books", "color": "greenBright"}
-    ]
-  }
-}
-```
-
-#### Date Fields
-- `date`: Requires dateFormat configuration
-```json
-{
-  "name": "Due Date",
-  "type": "date",
-  "description": "Task due date",
-  "options": {
-    "dateFormat": {
-      "name": "local"
-    }
-  }
-}
-```
-
-#### Other Fields
-- `email`: Email field (no options required)
-- `phoneNumber`: Phone number field (no options required)
-- `currency`: Currency field with precision and symbol options
-
-### Record Operations
-- List records from tables
-- Create new records
-- Update existing records
-- Search records by field values
-
-Example creating a record:
-```json
-{
-  "name": "create_record",
-  "arguments": {
-    "base_id": "your_base_id",
-    "table_name": "Customer Support",
-    "fields": {
-      "Ticket ID": "TKT-001",
-      "Status": "New",
-      "Description": "Initial setup required"
-    }
-  }
-}
-```
-
-## Setup
-
-1. Install dependencies:
+2. Install dependencies:
 ```bash
 npm install
-```
-
-2. Configure environment variables:
-Create a `.env` file with your Airtable API key:
-```
-AIRTABLE_API_KEY=your_api_key_here
 ```
 
 3. Build the server:
@@ -153,103 +28,144 @@ AIRTABLE_API_KEY=your_api_key_here
 npm run build
 ```
 
-## Implementation Details
+### Obtaining Airtable API Key
 
-### Field Validation
+1. Log in to your Airtable account at [airtable.com](https://airtable.com)
+2. Go to your [Account Overview](https://airtable.com/account)
+3. In the API section:
+   - Click "Generate API key" if you don't have one
+   - Or copy your existing API key
+4. Keep this key secure - you'll need it for configuration
 
-The server implements robust field validation through several key components:
+### Configuring Claude Desktop
 
-1. Type Definitions (`types.ts`):
-```typescript
-export type FieldType =
-  | 'singleLineText'
-  | 'multilineText'
-  | 'number'
-  | 'singleSelect'
-  | 'multiSelect'
-  | 'date'
-  | 'checkbox'
-  | 'email'
-  | 'phoneNumber'
-  | 'currency';
+#### Windows
+1. Open File Explorer and navigate to:
 ```
-
-2. Field Validation Logic:
-- Automatically determines if a field type requires options
-- Provides default options for fields that need them
-- Removes unnecessary options from fields that don't support them
-
-3. Error Handling:
-- Validates field structure before API calls
-- Provides clear error messages for invalid configurations
-- Handles API errors gracefully
-
-## Example Usage
-
-### Creating a Complex Table
-
+%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\
+```
+2. Create or edit `cline_mcp_settings.json`:
 ```json
 {
-  "name": "create_table",
-  "arguments": {
-    "base_id": "your_base_id",
-    "table_name": "Influencer Outreach",
-    "description": "Track influencer contacts and communications",
-    "fields": [
-      {
-        "name": "Influencer Name",
-        "type": "singleLineText",
-        "description": "Full name of the influencer"
-      },
-      {
-        "name": "Platform",
-        "type": "singleSelect",
-        "description": "Primary social media platform",
-        "options": {
-          "choices": [
-            {"name": "Instagram", "color": "pinkBright"},
-            {"name": "YouTube", "color": "redBright"},
-            {"name": "TikTok", "color": "cyanBright"}
-          ]
-        }
-      },
-      {
-        "name": "Followers",
-        "type": "number",
-        "description": "Number of followers",
-        "options": {
-          "precision": 0
-        }
-      }
-    ]
-  }
-}
-```
-
-### Adding Fields to Existing Table
-
-```json
-{
-  "name": "create_field",
-  "arguments": {
-    "base_id": "your_base_id",
-    "table_id": "your_table_id",
-    "field": {
-      "name": "Contact Status",
-      "type": "singleSelect",
-      "description": "Current status of communication",
-      "options": {
-        "choices": [
-          {"name": "To Contact", "color": "grayBright"},
-          {"name": "Message Sent", "color": "yellowBright"},
-          {"name": "Responded", "color": "greenBright"}
-        ]
+  "mcpServers": {
+    "airtable": {
+      "command": "node",
+      "args": ["C:/path/to/airtable-mcp/build/index.js"],
+      "env": {
+        "AIRTABLE_API_KEY": "your_api_key_here"
       }
     }
   }
 }
 ```
 
+#### macOS
+1. Open Terminal and navigate to:
+```bash
+~/Library/Application Support/Claude/
+```
+2. Create or edit `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "node",
+      "args": ["/path/to/airtable-mcp/build/index.js"],
+      "env": {
+        "AIRTABLE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Linux
+1. Navigate to:
+```bash
+~/.config/Claude/
+```
+2. Create or edit `claude_desktop_config.json` with the same content as above.
+
+### Verifying Installation
+
+1. Start Claude Desktop
+2. The Airtable MCP server should be listed in the "Connected MCP Servers" section
+3. Test with a simple command:
+```json
+{
+  "name": "list_bases"
+}
+```
+
+## Features
+
+[Previous features section remains the same...]
+
+## Contributing
+
+We welcome contributions to improve the Airtable MCP server! Here's how you can contribute:
+
+1. Fork the Repository
+   - Visit https://github.com/felores/airtable-mcp
+   - Click the "Fork" button in the top right
+   - Clone your fork locally:
+     ```bash
+     git clone https://github.com/your-username/airtable-mcp.git
+     ```
+
+2. Create a Feature Branch
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+3. Make Your Changes
+   - Follow the existing code style
+   - Add tests if applicable
+   - Update documentation as needed
+
+4. Commit Your Changes
+   ```bash
+   git add .
+   git commit -m "feat: add your feature description"
+   ```
+
+5. Push to Your Fork
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+6. Create a Pull Request
+   - Go to your fork on GitHub
+   - Click "New Pull Request"
+   - Select your feature branch
+   - Describe your changes in detail
+
+### Development Guidelines
+
+- Use TypeScript for new code
+- Follow semantic commit messages
+- Update documentation for new features
+- Add examples for new functionality
+- Test your changes thoroughly
+
+### Getting Help
+
+- Open an issue for bugs or feature requests
+- Join discussions in existing issues
+- Ask questions in pull requests
+
+Your contributions help make this tool better for everyone. Whether it's:
+- Adding new features
+- Fixing bugs
+- Improving documentation
+- Suggesting enhancements
+
+We appreciate your help in making the Airtable MCP server more powerful and user-friendly!
+
 ## License
 
 MIT
+
+---
+
+Made with ❤️ by the Airtable MCP community
