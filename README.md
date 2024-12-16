@@ -8,7 +8,7 @@ A Model Context Protocol server that provides tools for interacting with Airtabl
 - Node.js 16 or higher
 - npm or yarn
 - Git
-- Claude Desktop
+- Claude Desktop or an MCP compatible IDE like [VS Code](https://code.visualstudio.com/download) + [Cline](https://github.com/cline/cline)
 
 ### Getting Started
 
@@ -31,11 +31,14 @@ npm run build
 ### Obtaining Airtable API Key
 
 1. Log in to your Airtable account at [airtable.com](https://airtable.com)
-2. Go to your [Account Overview](https://airtable.com/account)
-3. In the API section:
-   - Click "Generate API key" if you don't have one
-   - Or copy your existing API key
-4. Keep this key secure - you'll need it for configuration
+2. Create a personal access token at [Airtable's Builder Hub](https://airtable.com/create/tokens)
+3. In the Personal access token section select these scores: 
+     - data.records:read
+     - data.records:write
+     - schema.bases:read
+     - schema.bases:write
+4. Select the workspace or bases you want to give access to the personal access token
+5. Keep this key secure - you'll need it for configuration
 
 ### Configuring Claude Desktop
 
