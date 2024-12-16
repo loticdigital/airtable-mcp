@@ -87,7 +87,7 @@ npm run build
 1. Start Claude Desktop
 2. The Airtable MCP server should be listed in the "Connected MCP Servers" section
 3. Test with a simple command:
-```json
+```
 List all bases
 ```
 
