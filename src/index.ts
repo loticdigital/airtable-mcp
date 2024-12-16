@@ -9,6 +9,7 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios, { AxiosInstance } from "axios";
+import { FieldOption, fieldRequiresOptions, getDefaultOptions, FieldType } from "./types.js";
 
 const API_KEY = process.env.AIRTABLE_API_KEY;
 if (!API_KEY) {
@@ -47,6 +48,26 @@ class AirtableServer {
       await this.server.close();
       process.exit(0);
     });
+  }
+
+  private validateField(field: FieldOption): FieldOption {
+    const { type } = field;
+
+    // Remove options for fields that don't need them
+    if (!fieldRequiresOptions(type as FieldType)) {
+      const { options, ...rest } = field;
+      return rest;
+    }
+
+    // Add default options for fields that require them
+    if (!field.options) {
+      return {
+        ...field,
+        options: getDefaultOptions(type as FieldType),
+      };
+    }
+
+    return field;
   }
 
   private setupToolHandlers() {
@@ -356,23 +377,16 @@ class AirtableServer {
               base_id: string;
               table_name: string;
               description?: string;
-              fields?: Array<{
-                name: string;
-                type: string;
-                description?: string;
-                options?: Record<string, any>;
-              }>;
+              fields?: FieldOption[];
             };
+            
+            // Validate and prepare fields
+            const validatedFields = fields?.map(field => this.validateField(field));
             
             const response = await this.axiosInstance.post(`/meta/bases/${base_id}/tables`, {
               name: table_name,
               description,
-              fields: fields?.map(field => ({
-                name: field.name,
-                type: field.type,
-                description: field.description,
-                options: field.options,
-              })),
+              fields: validatedFields,
             });
             
             return {
@@ -408,17 +422,16 @@ class AirtableServer {
             const { base_id, table_id, field } = request.params.arguments as {
               base_id: string;
               table_id: string;
-              field: {
-                name: string;
-                type: string;
-                description?: string;
-                options?: Record<string, any>;
-              };
+              field: FieldOption;
             };
             
-            const response = await this.axiosInstance.post(`/meta/bases/${base_id}/tables/${table_id}/fields`, {
-              ...field,
-            });
+            // Validate field before creation
+            const validatedField = this.validateField(field);
+            
+            const response = await this.axiosInstance.post(
+              `/meta/bases/${base_id}/tables/${table_id}/fields`,
+              validatedField
+            );
             
             return {
               content: [{
@@ -433,11 +446,7 @@ class AirtableServer {
               base_id: string;
               table_id: string;
               field_id: string;
-              updates: {
-                name?: string;
-                description?: string;
-                options?: Record<string, any>;
-              };
+              updates: Partial<FieldOption>;
             };
             
             const response = await this.axiosInstance.patch(
