@@ -45,9 +45,9 @@ npm run build
 #### Windows
 1. Open File Explorer and navigate to:
 ```
-%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\
+%APPDATA%\Roaming\Claude
 ```
-2. Create or edit `cline_mcp_settings.json`:
+2. Create or edit `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
@@ -81,13 +81,6 @@ npm run build
   }
 }
 ```
-
-#### Linux
-1. Navigate to:
-```bash
-~/.config/Claude/
-```
-2. Create or edit `claude_desktop_config.json` with the same content as above.
 
 ### Verifying Installation
 
