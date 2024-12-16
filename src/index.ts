@@ -320,6 +320,28 @@ class AirtableServer {
           },
         },
         {
+          name: "delete_record",
+          description: "Delete a record from a table",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_name: {
+                type: "string",
+                description: "Name of the table",
+              },
+              record_id: {
+                type: "string",
+                description: "ID of the record to delete",
+              },
+            },
+            required: ["base_id", "table_name", "record_id"],
+          },
+        },
+        {
           name: "search_records",
           description: "Search for records in a table",
           inputSchema: {
@@ -506,6 +528,23 @@ class AirtableServer {
             const response = await this.axiosInstance.patch(
               `/${base_id}/${table_name}/${record_id}`,
               { fields }
+            );
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "delete_record": {
+            const { base_id, table_name, record_id } = request.params.arguments as {
+              base_id: string;
+              table_name: string;
+              record_id: string;
+            };
+            const response = await this.axiosInstance.delete(
+              `/${base_id}/${table_name}/${record_id}`
             );
             return {
               content: [{
