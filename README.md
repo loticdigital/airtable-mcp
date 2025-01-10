@@ -2,6 +2,8 @@
 
 A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop.
 
+This MCP server has an special implementation that allows it to build tables in stages, leveraging the agentic capabilities of Claude and minimizing the failure rate present in other MCP servers for Airtable when building complex tables, also comes with system prompts to create projects inside Claude Desktop with even further guidance for the LLM. 
+
 ## Installation
 
 ### Prerequisites
