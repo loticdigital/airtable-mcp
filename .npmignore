@@ -1,0 +1,29 @@
+# Source
+src/
+
+# Development files
+.git/
+.github/
+.gitignore
+.vscode/
+.idea/
+*.log
+
+# Test files
+test/
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Configuration files
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Build artifacts
+*.tsbuildinfo 

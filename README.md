@@ -2,30 +2,57 @@
 
 A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop.
 
-## Installation
+## Quick Start
 
-### Prerequisites
-- Node.js 16 or higher
-- npm or yarn
-- Git
-- Claude Desktop or an MCP compatible IDE like [VS Code](https://code.visualstudio.com/download) + [Cline](https://github.com/cline/cline)
-
-### Getting Started
-
-1. Clone the repository:
 ```bash
+# Install and run with npx (recommended)
+npx airtable-server
+
+# Or install globally
+npm install -g airtable-server
+```
+
+⚠️ **Important**: Before running, make sure to:
+1. Set up your Airtable API key (see [API Key Setup](#obtaining-airtable-api-key))
+2. Configure Claude Desktop (see [Configuration](#configuring-claude-desktop))
+
+## Installation Methods
+
+### Method 1: Using npx (Recommended)
+The easiest way to run the server is with npx:
+```bash
+# Run directly (will install latest version)
+npx airtable-server
+
+# Or specify a version
+npx airtable-server@0.1.0
+```
+
+### Method 2: Global Installation
+If you prefer a global installation:
+```bash
+# Install globally
+npm install -g airtable-server
+
+# Run from anywhere
+airtable-server
+```
+
+### Method 3: Local Development Installation
+If you want to contribute or modify the code:
+```bash
+# Clone the repository
 git clone https://github.com/felores/airtable-mcp.git
 cd airtable-mcp
-```
 
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-3. Build the server:
-```bash
+# Build the server
 npm run build
+
+# Run locally
+node build/index.js
 ```
 
 ### Obtaining Airtable API Key
@@ -45,7 +72,7 @@ npm run build
 #### Windows
 1. Open File Explorer and navigate to:
 ```
-%APPDATA%\Roaming\Claude
+%APPDATA%\Claude
 ```
 2. Create or edit `claude_desktop_config.json`:
 ```json
@@ -53,7 +80,22 @@ npm run build
   "mcpServers": {
     "airtable": {
       "command": "node",
-      "args": ["C:/path/to/airtable-mcp/build/index.js"],
+      "args": ["C:\\path\\to\\airtable-mcp\\build\\index.js"],
+      "env": {
+        "AIRTABLE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+For npx installation on Windows, use:
+```json
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "npx",
+      "args": ["airtable-server"],
       "env": {
         "AIRTABLE_API_KEY": "your_api_key_here"
       }
@@ -74,6 +116,21 @@ npm run build
     "airtable": {
       "command": "node",
       "args": ["/path/to/airtable-mcp/build/index.js"],
+      "env": {
+        "AIRTABLE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+For npx installation on macOS, use:
+```json
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "npx",
+      "args": ["airtable-server"],
       "env": {
         "AIRTABLE_API_KEY": "your_api_key_here"
       }

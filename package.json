@@ -2,16 +2,16 @@
   "name": "airtable-server",
   "version": "0.1.0",
   "description": "An Airtable Model Context Protocol Server",
-  "private": true,
   "type": "module",
   "bin": {
-    "airtable-server": "./build/index.js"
+    "airtable-server": "build/index.js"
   },
   "files": [
-    "build"
+    "build",
+    "scripts"
   ],
   "scripts": {
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "build": "tsc && node scripts/post-build.js",
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js"
@@ -23,5 +23,21 @@
   "devDependencies": {
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3"
+  },
+  "author": "Felipe Restrepo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/felores/airtable-mcp"
+  },
+  "keywords": [
+    "airtable",
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "api"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
