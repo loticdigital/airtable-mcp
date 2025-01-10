@@ -2,7 +2,23 @@
 
 A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop.
 
+This MCP server has a special implementation that allows it to build tables in stages, leveraging the agentic capabilities of Claude and minimizing the failure rate present in other MCP servers for Airtable when building complex tables. It also comes with system prompts to create projects inside Claude Desktop with even further guidance for the LLM.
+
 ## Quick Start
+
+```bash
+# Install and run with npx (recommended)
+npx airtable-server
+
+# Or install globally
+npm install -g airtable-server
+```
+
+⚠️ **Important**: Before running, make sure to:
+1. Set up your Airtable API key (see [API Key Setup](#obtaining-airtable-api-key))
+2. Configure Claude Desktop (see [Configuration](#configuring-claude-desktop))
+
+## Installation
 
 ```bash
 # Install and run with npx (recommended)
