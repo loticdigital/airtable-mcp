@@ -17,7 +17,7 @@ The easiest way to run the server is with npx:
 npx airtable-server
 
 # Or specify a version
-npx airtable-server@0.1.0
+npx airtable-server@0.2.0
 ```
 
 ### Method 2: Global Installation
@@ -128,6 +128,7 @@ List all bases
 - `update_record`: Modify an existing record
 - `delete_record`: Remove a record
 - `search_records`: Find records matching criteria
+- `get_record`: Get a single record by its ID
 
 ### Field Types
 - `singleLineText`: Single line text field
@@ -210,7 +211,7 @@ We appreciate your help in making the Airtable MCP server more powerful and user
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ---
 

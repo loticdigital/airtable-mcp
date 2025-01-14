@@ -24,7 +24,7 @@ class AirtableServer {
     this.server = new Server(
       {
         name: "airtable-server",
-        version: "0.1.0",
+        version: "0.2.0",
       },
       {
         capabilities: {
@@ -71,6 +71,7 @@ class AirtableServer {
   }
 
   private setupToolHandlers() {
+    // Register available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
@@ -367,6 +368,28 @@ class AirtableServer {
             required: ["base_id", "table_name", "field_name", "value"],
           },
         },
+        {
+          name: "get_record",
+          description: "Get a single record by its ID",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_name: {
+                type: "string",
+                description: "Name of the table",
+              },
+              record_id: {
+                type: "string",
+                description: "ID of the record to retrieve",
+              },
+            },
+            required: ["base_id", "table_name", "record_id"],
+          },
+        },
       ],
     }));
 
@@ -570,6 +593,23 @@ class AirtableServer {
               content: [{
                 type: "text",
                 text: JSON.stringify(response.data.records, null, 2),
+              }],
+            };
+          }
+
+          case "get_record": {
+            const { base_id, table_name, record_id } = request.params.arguments as {
+              base_id: string;
+              table_name: string;
+              record_id: string;
+            };
+            const response = await this.axiosInstance.get(
+              `/${base_id}/${table_name}/${record_id}`
+            );
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
               }],
             };
           }
