@@ -11,24 +11,40 @@ This MCP server features a specialized implementation that allows it to build ta
 2. Configure Claude Desktop (see [Configuration](#configuring-claude-desktop))
 
 ### Method 1: Using npx (Recommended)
-The easiest way to run the server is with npx:
-```bash
-# Run directly (will install latest version)
-npx airtable-server
+1. Navigate to the Claude configuration directory:
 
-# Or specify a version
-npx airtable-server@0.2.0
+   - Windows: `C:\Users\NAME\AppData\Roaming\Claude`
+   - macOS: `~/Library/Application Support/Claude/`
+   
+   You can also find these directories inside the Claude Desktop app: Claude Desktop > Settings > Developer > Edit Config
+
+2. Create or edit `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "npx",
+      "args": ["@felores/airtable-mcp-server"],
+      "env": {
+        "AIRTABLE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
 ```
+Note: For Windows paths, use double backslashes (\\) or forward slashes (/).
 
-### Method 2: Using [mcp-installer](https://github.com/anaisbetts/mcp-installer):
-After you have mcp-installer installed, you can install the Airtable MCP server by prompting Claude Desktop:
+### Method 2: Using mcp-installer:
+mcp-installer is a MCP server to install other MCP servers.
+1. Install [mcp-installer](https://github.com/anaisbetts/mcp-installer), 
+2. Install the Airtable MCP server by prompting Claude Desktop:
 ```bash
-Install the MCP server: airtable-server. Set the environment variable AIRTABLE_API_KEY to 'your_airtable_api_key_here'
+Install @felores/airtable-mcp-server. Set the environment variable AIRTABLE_API_KEY to 'your_api_key'
 ```
 Claude will install the server, modify the configuration file and set the environment variable AIRTABLE_API_KEY to your Airtable API key.
 
 ### Method 3: Local Development Installation
-If you want to contribute or modify the code:
+If you want to contribute or modify the code run this in your terminal:
 ```bash
 # Clone the repository
 git clone https://github.com/felores/airtable-mcp.git
@@ -43,46 +59,7 @@ npm run build
 # Run locally
 node build/index.js
 ```
-
-### Obtaining Airtable API Key
-
-1. Log in to your Airtable account at [airtable.com](https://airtable.com)
-2. Create a personal access token at [Airtable's Builder Hub](https://airtable.com/create/tokens)
-3. In the Personal access token section select these scopes: 
-     - data.records:read
-     - data.records:write
-     - schema.bases:read
-     - schema.bases:write
-4. Select the workspace or bases you want to give access to the personal access token
-5. Keep this key secure - you'll need it for configuration
-
-### Configuring Claude Desktop
-
-1. Navigate to the Claude configuration directory:
-
-   - Windows: `C:\Users\NAME\AppData\Roaming\Claude`
-   - macOS: `~/Library/Application Support/Claude/`
-   
-   (You can also find these directories in Claude Desktop > Settings > Developer > Edit Config)
-
-2. Create or edit `claude_desktop_config.json`:
-
-For npx installation:
-```json
-{
-  "mcpServers": {
-    "airtable": {
-      "command": "npx",
-      "args": ["airtable-server"],
-      "env": {
-        "AIRTABLE_API_KEY": "your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-For local installation:
+Then modify the Claude Desktop configuration file to use the local installation:
 ```json
 {
   "mcpServers": {
@@ -97,7 +74,17 @@ For local installation:
 }
 ```
 
-Note: For Windows paths, use double backslashes (\\) or forward slashes (/).
+### Obtaining Airtable API Key
+
+1. Log in to your Airtable account at [airtable.com](https://airtable.com)
+2. Create a personal access token at [Airtable's Builder Hub](https://airtable.com/create/tokens)
+3. In the Personal access token section select these scopes: 
+     - data.records:read
+     - data.records:write
+     - schema.bases:read
+     - schema.bases:write
+4. Select the workspace or bases you want to give access to the personal access token
+5. Keep this key secure - you'll need it for configuration
 
 ### Verifying Installation
 
