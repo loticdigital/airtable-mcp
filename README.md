@@ -1,6 +1,6 @@
 # Airtable MCP Server
 
-A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop.
+A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop or other MCP clients.
 
 This MCP server features a specialized implementation that allows it to build tables in stages, leveraging Claude's agentic capabilities and minimizing the failure rate typically seen in other MCP servers for Airtable when building complex tables. It also includes system prompts that provide additional guidance for the LLM when leveraging projects in Claude Desktop.
 
@@ -20,15 +20,12 @@ npx airtable-server
 npx airtable-server@0.2.0
 ```
 
-### Method 2: Global Installation
-If you prefer a global installation:
+### Method 2: Using [mcp-installer](https://github.com/anaisbetts/mcp-installer):
+After you have mcp-installer installed, you can install the Airtable MCP server by prompting Claude Desktop:
 ```bash
-# Install globally
-npm install -g airtable-server
-
-# Run from anywhere
-airtable-server
+Install the MCP server: airtable-server. Set the environment variable AIRTABLE_API_KEY to 'your_airtable_api_key_here'
 ```
+Claude will install the server, modify the configuration file and set the environment variable AIRTABLE_API_KEY to your Airtable API key.
 
 ### Method 3: Local Development Installation
 If you want to contribute or modify the code:
@@ -62,25 +59,13 @@ node build/index.js
 ### Configuring Claude Desktop
 
 1. Navigate to the Claude configuration directory:
-   - Windows: `%APPDATA%\Claude`
+
+   - Windows: `C:\Users\NAME\AppData\Roaming\Claude`
    - macOS: `~/Library/Application Support/Claude/`
+   
+   (You can also find these directories in Claude Desktop > Settings > Developer > Edit Config)
 
 2. Create or edit `claude_desktop_config.json`:
-
-For local installation:
-```json
-{
-  "mcpServers": {
-    "airtable": {
-      "command": "node",
-      "args": ["path/to/airtable-mcp/build/index.js"],
-      "env": {
-        "AIRTABLE_API_KEY": "your_api_key_here"
-      }
-    }
-  }
-}
-```
 
 For npx installation:
 ```json
@@ -89,6 +74,21 @@ For npx installation:
     "airtable": {
       "command": "npx",
       "args": ["airtable-server"],
+      "env": {
+        "AIRTABLE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+For local installation:
+```json
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "node",
+      "args": ["path/to/airtable-mcp/build/index.js"],
       "env": {
         "AIRTABLE_API_KEY": "your_api_key_here"
       }
