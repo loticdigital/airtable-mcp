@@ -4,11 +4,21 @@ A Model Context Protocol server that provides tools for interacting with Airtabl
 
 This MCP server features a specialized implementation that allows it to build tables in stages, leveraging Claude's agentic capabilities and minimizing the failure rate typically seen in other MCP servers for Airtable when building complex tables. It also includes system prompts that provide additional guidance for the LLM when leveraging projects in Claude Desktop.
 
-## Installation
+⚠️ **Important**: Before running, make sure to setup your Airtable API key
 
-⚠️ **Important**: Before running, make sure to:
-1. Set up your Airtable API key (see [API Key Setup](#obtaining-airtable-api-key))
-2. Configure Claude Desktop (see [Configuration](#configuring-claude-desktop))
+## Obtaining an Airtable API Key
+
+1. Log in to your Airtable account at [airtable.com](https://airtable.com)
+2. Create a personal access token at [Airtable's Builder Hub](https://airtable.com/create/tokens)
+3. In the Personal access token section select these scopes: 
+     - data.records:read
+     - data.records:write
+     - schema.bases:read
+     - schema.bases:write
+4. Select the workspace or bases you want to give access to the personal access token
+5. Keep this key secure - you'll need it for configuration
+
+## Installation
 
 ### Method 1: Using npx (Recommended)
 1. Navigate to the Claude configuration directory:
@@ -73,18 +83,6 @@ Then modify the Claude Desktop configuration file to use the local installation:
   }
 }
 ```
-
-### Obtaining Airtable API Key
-
-1. Log in to your Airtable account at [airtable.com](https://airtable.com)
-2. Create a personal access token at [Airtable's Builder Hub](https://airtable.com/create/tokens)
-3. In the Personal access token section select these scopes: 
-     - data.records:read
-     - data.records:write
-     - schema.bases:read
-     - schema.bases:write
-4. Select the workspace or bases you want to give access to the personal access token
-5. Keep this key secure - you'll need it for configuration
 
 ### Verifying Installation
 
