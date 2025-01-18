@@ -46,10 +46,10 @@ Note: For Windows paths, use double backslashes (\\) or forward slashes (/).
 
 ### Method 2: Using mcp-installer:
 mcp-installer is a MCP server to install other MCP servers.
-1. Install [mcp-installer](https://github.com/anaisbetts/mcp-installer), 
+1. Install [mcp-installer](https://github.com/anaisbetts/mcp-installer)
 2. Install the Airtable MCP server by prompting Claude Desktop:
 ```bash
-Install @felores/airtable-mcp-server. Set the environment variable AIRTABLE_API_KEY to 'your_api_key'
+Install @felores/airtable-mcp-server set the environment variable AIRTABLE_API_KEY to 'your_api_key'
 ```
 Claude will install the server, modify the configuration file and set the environment variable AIRTABLE_API_KEY to your Airtable API key.
 
