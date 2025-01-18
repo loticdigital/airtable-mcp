@@ -1636,4 +1636,749 @@ curl -X POST "https://content.airtable.com/v0/{baseId}/{recordId}/{attachmentFie
 }
 ```
 
+Bases
+
+# List bases
+
+get `https://api.airtable.com/v0/meta/bases`
+
+Returns the list of bases the token can access, 1000 bases at a time.
+If there is another page to request, pass the offset as a URL query parameter.
+(e.g. `?offset=itr23sEjsdfEr3282/appSW9R5uCNmRmfl6`)
+
+[§](https://airtable.com/developers/web/api/list-bases#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:read`](https://airtable.com/developers/web/api/scopes#schema-bases-read) |
+| User role | Base read-only |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/list-bases#query)
+
+### Query parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/list-bases#query-offset)`offset` | `optional<` `string` `>` |
+
+[§](https://airtable.com/developers/web/api/list-bases#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/list-bases#response-offset)`offset` | `optional<` `string` `>` |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases)`bases` | `array of the below object`  ``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases-id)`id` | `string` <br>Base ID, a unique identifier for a base. |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases-name)`name` | `string` |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases-permissionlevel)`permissionLevel` | `"none" | "read" | "comment" | "edit" | "create"` | |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl "https://api.airtable.com/v0/meta/bases" \
+-H "Authorization: Bearer YOUR_TOKEN"
+```
+
+200 – Response (example)
+
+```
+
+{
+  "bases": [\
+    {\
+      "id": "appLkNDICXNqxSDhG",\
+      "name": "Apartment Hunting",\
+      "permissionLevel": "create"\
+    },\
+    {\
+      "id": "appSW9R5uCNmRmfl6",\
+      "name": "Project Tracker",\
+      "permissionLevel": "edit"\
+    }\
+  ],
+  "offset": "itr23sEjsdfEr3282/appSW9R5uCNmRmfl6"
+}
+```
+
+Bases
+
+# Get base schema
+
+get `https://api.airtable.com/v0/meta/bases/{baseId}/tables`
+
+Returns the schema of the tables in the specified base.
+
+[§](https://airtable.com/developers/web/api/get-base-schema#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:read`](https://airtable.com/developers/web/api/scopes#schema-bases-read) |
+| User role | Base read-only |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/get-base-schema#path)
+
+### Path parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/get-base-schema#path-baseid)`baseId` | `string` |
+
+[§](https://airtable.com/developers/web/api/get-base-schema#query)
+
+### Query parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/get-base-schema#query-include)`include` | `optional<` `array of "visibleFieldIds"` `>` <br>If specified, additional fields to include in the `views` object response; currently, this list only allows a single literal value `visibleFieldIds` (for views of type `grid` only) |
+
+[§](https://airtable.com/developers/web/api/get-base-schema#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/get-base-schema#response-tables)`tables` | `array of Table models` |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl "https://api.airtable.com/v0/meta/bases/{baseId}/tables" \
+-H "Authorization: Bearer YOUR_TOKEN"
+```
+
+200 – Response (example)
+
+```
+
+{
+  "tables": [\
+    {\
+      "description": "Apartments to track.",\
+      "fields": [\
+        {\
+          "description": "Name of the apartment",\
+          "id": "fld1VnoyuotSTyxW1",\
+          "name": "Name",\
+          "type": "singleLineText"\
+        },\
+        {\
+          "id": "fldoaIqdn5szURHpw",\
+          "name": "Pictures",\
+          "options": {\
+            "isReversed": false\
+          },\
+          "type": "multipleAttachments"\
+        },\
+        {\
+          "id": "fldumZe00w09RYTW6",\
+          "name": "District",\
+          "options": {\
+            "inverseLinkFieldId": "fldWnCJlo2z6ttT8Y",\
+            "isReversed": false,\
+            "linkedTableId": "tblK6MZHez0ZvBChZ",\
+            "prefersSingleRecordLink": true\
+          },\
+          "type": "multipleRecordLinks"\
+        }\
+      ],\
+      "id": "tbltp8DGLhqbUmjK1",\
+      "name": "Apartments",\
+      "primaryFieldId": "fld1VnoyuotSTyxW1",\
+      "views": [\
+        {\
+          "id": "viwQpsuEDqHFqegkp",\
+          "name": "Grid view",\
+          "type": "grid"\
+        }\
+      ]\
+    },\
+    {\
+      "fields": [\
+        {\
+          "id": "fldEVzvQOoULO38yl",\
+          "name": "Name",\
+          "type": "singleLineText"\
+        },\
+        {\
+          "description": "Apartments that belong to this district",\
+          "id": "fldWnCJlo2z6ttT8Y",\
+          "name": "Apartments",\
+          "options": {\
+            "inverseLinkFieldId": "fldumZe00w09RYTW6",\
+            "isReversed": false,\
+            "linkedTableId": "tbltp8DGLhqbUmjK1",\
+            "prefersSingleRecordLink": false\
+          },\
+          "type": "multipleRecordLinks"\
+        }\
+      ],\
+      "id": "tblK6MZHez0ZvBChZ",\
+      "name": "Districts",\
+      "primaryFieldId": "fldEVzvQOoULO38yl",\
+      "views": [\
+        {\
+          "id": "viwi3KXvrKug2mIBS",\
+          "name": "Grid view",\
+          "type": "grid"\
+        }\
+      ]\
+    }\
+  ]
+}
+```
+
+# Update field
+
+patch `https://api.airtable.com/v0/meta/bases/{baseId}/tables/{tableId}/fields/{columnId}`
+
+Updates the name and/or description of a field. At least one of name or description must be specified.
+
+[§](https://airtable.com/developers/web/api/update-field#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:write`](https://airtable.com/developers/web/api/scopes#schema-bases-write) |
+| User role | Base creator |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/update-field#path)
+
+### Path parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/update-field#path-baseid)`baseId` | `string` |
+| [§](https://airtable.com/developers/web/api/update-field#path-tableid)`tableId` | `string` |
+| [§](https://airtable.com/developers/web/api/update-field#path-columnid)`columnId` | `string` |
+
+[§](https://airtable.com/developers/web/api/update-field#request)
+
+### Request body
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/update-field#request-description)`description` | `optional<` `string` `>` <br>The new description for the field (optional). If present, must be a string no longer than 20,000 characters. |
+| [§](https://airtable.com/developers/web/api/update-field#request-name)`name` | `optional<` `string` `>` <br>The new name for the field (optional). |
+
+[§](https://airtable.com/developers/web/api/update-field#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/update-field#response-id)`id` | `string` |
+| [§](https://airtable.com/developers/web/api/update-field#response-type)`type` | `optional<` [`Field Type`](https://airtable.com/developers/web/api/model/field-type) `>` |
+| [§](https://airtable.com/developers/web/api/update-field#response-name)`name` | `string` |
+| [§](https://airtable.com/developers/web/api/update-field#response-description)`description` | `optional<` `string` `>` |
+| [§](https://airtable.com/developers/web/api/update-field#response-options)`options` | `optional<` [`Field options`](https://airtable.com/developers/web/api/field-model) `>` |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl -X PATCH "https://api.airtable.com/v0/meta/bases/{baseId}/tables/{tableId}/fields/{columnId}" \
+-H "Authorization: Bearer YOUR_TOKEN" \
+-H "Content-Type: application/json" \
+--data '{
+    "description": "I was changed!",
+    "name": "Apartments (revised)"
+  }'
+```
+
+200 – Response (example)
+
+```
+
+{
+  "description": "I was changed!",
+  "id": "fldoi0c3GaRQJ3xnI",
+  "name": "Name (revised)",
+  "type": "singleLineText"
+}
+```
+
+
+# Create field
+
+post `https://api.airtable.com/v0/meta/bases/{baseId}/tables/{tableId}/fields`
+
+Creates a new column and returns the schema for the newly created column.
+
+Refer to field types for supported [field types](https://airtable.com/developers/web/api/model/field-type), the write format for field options, and other specifics for certain field types. Supported field types have a write format shown.
+
+[§](https://airtable.com/developers/web/api/create-field#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:write`](https://airtable.com/developers/web/api/scopes#schema-bases-write) |
+| User role | Base creator |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/create-field#path)
+
+### Path parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/create-field#path-baseid)`baseId` | `string` |
+| [§](https://airtable.com/developers/web/api/create-field#path-tableid)`tableId` | `string` |
+
+[§](https://airtable.com/developers/web/api/create-field#request)
+
+### Request body
+
+[`Field model with name`](https://airtable.com/developers/web/api/field-model)
+
+This identical to Field type and options, with
+an additional `name` and `description` property on all types
+
+[§](https://airtable.com/developers/web/api/create-field#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/create-field#response-id)`id` | `string` |
+| [§](https://airtable.com/developers/web/api/create-field#response-type)`type` | `optional<` [`Field Type`](https://airtable.com/developers/web/api/model/field-type) `>` |
+| [§](https://airtable.com/developers/web/api/create-field#response-name)`name` | `string` |
+| [§](https://airtable.com/developers/web/api/create-field#response-description)`description` | `optional<` `string` `>` |
+| [§](https://airtable.com/developers/web/api/create-field#response-options)`options` | `optional<` [`Field options`](https://airtable.com/developers/web/api/field-model) `>` |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl -X POST "https://api.airtable.com/v0/meta/bases/{baseId}/tables/{tableId}/fields" \
+-H "Authorization: Bearer YOUR_TOKEN" \
+-H "Content-Type: application/json" \
+--data '{
+    "description": "Whether I have visited this apartment yet.",
+    "name": "Visited",
+    "options": {
+      "color": "greenBright",
+      "icon": "check"
+    },
+    "type": "checkbox"
+  }'
+```
+
+200 – Response (example)
+
+```
+
+{
+  "description": "Whether I have visited this apartment yet.",
+  "id": "fldumZe00w09RYTW6",
+  "name": "Visited",
+  "options": {
+    "color": "redBright",
+    "icon": "star"
+  },
+  "type": "checkbox"
+}
+```
+
+
+# List bases
+
+get `https://api.airtable.com/v0/meta/bases`
+
+Returns the list of bases the token can access, 1000 bases at a time.
+If there is another page to request, pass the offset as a URL query parameter.
+(e.g. `?offset=itr23sEjsdfEr3282/appSW9R5uCNmRmfl6`)
+
+[§](https://airtable.com/developers/web/api/list-bases#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:read`](https://airtable.com/developers/web/api/scopes#schema-bases-read) |
+| User role | Base read-only |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/list-bases#query)
+
+### Query parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/list-bases#query-offset)`offset` | `optional<` `string` `>` |
+
+[§](https://airtable.com/developers/web/api/list-bases#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/list-bases#response-offset)`offset` | `optional<` `string` `>` |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases)`bases` | `array of the below object`  ``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases-id)`id` | `string` <br>Base ID, a unique identifier for a base. |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases-name)`name` | `string` |
+| [§](https://airtable.com/developers/web/api/list-bases#response-bases-permissionlevel)`permissionLevel` | `"none" | "read" | "comment" | "edit" | "create"` | |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl "https://api.airtable.com/v0/meta/bases" \
+-H "Authorization: Bearer YOUR_TOKEN"
+```
+
+200 – Response (example)
+
+```
+
+{
+  "bases": [\
+    {\
+      "id": "appLkNDICXNqxSDhG",\
+      "name": "Apartment Hunting",\
+      "permissionLevel": "create"\
+    },\
+    {\
+      "id": "appSW9R5uCNmRmfl6",\
+      "name": "Project Tracker",\
+      "permissionLevel": "edit"\
+    }\
+  ],
+  "offset": "itr23sEjsdfEr3282/appSW9R5uCNmRmfl6"
+}
+```
+
+# Get base schema
+
+get `https://api.airtable.com/v0/meta/bases/{baseId}/tables`
+
+Returns the schema of the tables in the specified base.
+
+[§](https://airtable.com/developers/web/api/get-base-schema#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:read`](https://airtable.com/developers/web/api/scopes#schema-bases-read) |
+| User role | Base read-only |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/get-base-schema#path)
+
+### Path parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/get-base-schema#path-baseid)`baseId` | `string` |
+
+[§](https://airtable.com/developers/web/api/get-base-schema#query)
+
+### Query parameters
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/get-base-schema#query-include)`include` | `optional<` `array of "visibleFieldIds"` `>` <br>If specified, additional fields to include in the `views` object response; currently, this list only allows a single literal value `visibleFieldIds` (for views of type `grid` only) |
+
+[§](https://airtable.com/developers/web/api/get-base-schema#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/get-base-schema#response-tables)`tables` | `array of Table models` |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl "https://api.airtable.com/v0/meta/bases/{baseId}/tables" \
+-H "Authorization: Bearer YOUR_TOKEN"
+```
+
+200 – Response (example)
+
+```
+
+{
+  "tables": [\
+    {\
+      "description": "Apartments to track.",\
+      "fields": [\
+        {\
+          "description": "Name of the apartment",\
+          "id": "fld1VnoyuotSTyxW1",\
+          "name": "Name",\
+          "type": "singleLineText"\
+        },\
+        {\
+          "id": "fldoaIqdn5szURHpw",\
+          "name": "Pictures",\
+          "options": {\
+            "isReversed": false\
+          },\
+          "type": "multipleAttachments"\
+        },\
+        {\
+          "id": "fldumZe00w09RYTW6",\
+          "name": "District",\
+          "options": {\
+            "inverseLinkFieldId": "fldWnCJlo2z6ttT8Y",\
+            "isReversed": false,\
+            "linkedTableId": "tblK6MZHez0ZvBChZ",\
+            "prefersSingleRecordLink": true\
+          },\
+          "type": "multipleRecordLinks"\
+        }\
+      ],\
+      "id": "tbltp8DGLhqbUmjK1",\
+      "name": "Apartments",\
+      "primaryFieldId": "fld1VnoyuotSTyxW1",\
+      "views": [\
+        {\
+          "id": "viwQpsuEDqHFqegkp",\
+          "name": "Grid view",\
+          "type": "grid"\
+        }\
+      ]\
+    },\
+    {\
+      "fields": [\
+        {\
+          "id": "fldEVzvQOoULO38yl",\
+          "name": "Name",\
+          "type": "singleLineText"\
+        },\
+        {\
+          "description": "Apartments that belong to this district",\
+          "id": "fldWnCJlo2z6ttT8Y",\
+          "name": "Apartments",\
+          "options": {\
+            "inverseLinkFieldId": "fldumZe00w09RYTW6",\
+            "isReversed": false,\
+            "linkedTableId": "tbltp8DGLhqbUmjK1",\
+            "prefersSingleRecordLink": false\
+          },\
+          "type": "multipleRecordLinks"\
+        }\
+      ],\
+      "id": "tblK6MZHez0ZvBChZ",\
+      "name": "Districts",\
+      "primaryFieldId": "fldEVzvQOoULO38yl",\
+      "views": [\
+        {\
+          "id": "viwi3KXvrKug2mIBS",\
+          "name": "Grid view",\
+          "type": "grid"\
+        }\
+      ]\
+    }\
+  ]
+}
+```
+
+
+# Create base
+
+post `https://api.airtable.com/v0/meta/bases`
+
+Creates a new base with the provided tables and returns the schema for the newly created base.
+
+Refer to field types for supported field types, the write format for field options, and other specifics for certain field types. Supported field types have a write format shown.
+
+At least one table and field must be specified. The first field in the fields array will be used as the table's primary field and must be a supported primary field type. Fields must have case-insensitive unique names within the table.
+
+A default grid view will be created with all fields visible for each provided table.
+
+[§](https://airtable.com/developers/web/api/create-base#requirements)
+
+### Requirements
+
+|     |     |
+| --- | --- |
+| Authentication | [Personal access token](https://airtable.com/developers/web/api/authentication#types-of-token), [OAuth integration](https://airtable.com/developers/web/api/authentication#types-of-token) |
+| Scope | [`schema.bases:write`](https://airtable.com/developers/web/api/scopes#schema-bases-write) |
+| User role | Workspace creator |
+| Billing plans | All plans |
+
+[§](https://airtable.com/developers/web/api/create-base#request)
+
+### Request body
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/create-base#request-name)`name` | `string` <br>The name for the new base. |
+| [§](https://airtable.com/developers/web/api/create-base#request-workspaceid)`workspaceId` | `string` <br>The workspace where the base will be created. |
+| [§](https://airtable.com/developers/web/api/create-base#request-tables)`tables` | `array of Table Configs` <br>A list of JSON objects representing<br>the tables that will be created along with the base. |
+
+[§](https://airtable.com/developers/web/api/create-base#response)
+
+### Response format
+
+``
+
+|     |     |
+| --- | --- |
+| [§](https://airtable.com/developers/web/api/create-base#response-id)`id` | `string` <br>Base ID, a unique identifier for a base. |
+| [§](https://airtable.com/developers/web/api/create-base#response-tables)`tables` | `array of Table models` |
+
+Request (example)
+
+Copy
+
+```
+
+$
+curl -X POST "https://api.airtable.com/v0/meta/bases" \
+-H "Authorization: Bearer YOUR_TOKEN" \
+-H "Content-Type: application/json" \
+--data '{
+    "name": "Apartment Hunting",
+    "tables": [\
+      {\
+        "description": "A to-do list of places to visit",\
+        "fields": [\
+          {\
+            "description": "Name of the apartment",\
+            "name": "Name",\
+            "type": "singleLineText"\
+          },\
+          {\
+            "name": "Address",\
+            "type": "singleLineText"\
+          },\
+          {\
+            "name": "Visited",\
+            "options": {\
+              "color": "greenBright",\
+              "icon": "check"\
+            },\
+            "type": "checkbox"\
+          }\
+        ],\
+        "name": "Apartments"\
+      }\
+    ],
+    "workspaceId": "wspmhESAta6clCCwF"
+  }'
+```
+
+200 – Response (example)
+
+```
+
+{
+  "id": "appLkNDICXNqxSDhG",
+  "tables": [\
+    {\
+      "description": "A to-do list of places to visit",\
+      "fields": [\
+        {\
+          "description": "Name of the apartment",\
+          "id": "fld1VnoyuotSTyxW1",\
+          "name": "Name",\
+          "type": "singleLineText"\
+        },\
+        {\
+          "id": "fldoi0c3GaRQJ3xnI",\
+          "name": "Address",\
+          "type": "singleLineText"\
+        },\
+        {\
+          "id": "fldumZe00w09RYTW6",\
+          "name": "Visited",\
+          "options": {\
+            "color": "redBright",\
+            "icon": "star"\
+          },\
+          "type": "checkbox"\
+        }\
+      ],\
+      "id": "tbltp8DGLhqbUmjK1",\
+      "name": "Apartments",\
+      "primaryFieldId": "fld1VnoyuotSTyxW1",\
+      "views": [\
+        {\
+          "id": "viwQpsuEDqHFqegkp",\
+          "name": "Grid view",\
+          "type": "grid"\
+        }\
+      ]\
+    }\
+  ]
+}
+```
 
