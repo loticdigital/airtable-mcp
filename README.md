@@ -4,6 +4,15 @@ A Model Context Protocol server that provides tools for interacting with Airtabl
 
 This MCP server features a specialized implementation that allows it to build tables in stages, leveraging Claude's agentic capabilities and minimizing the failure rate typically seen in other MCP servers for Airtable when building complex tables. It also includes [system prompt](https://github.com/felores/airtable-mcp/blob/main/prompts/system-prompt.md) and [project knowledge](https://github.com/felores/airtable-mcp/blob/main/prompts/project-knowledge.md) markdown files to provide additional guidance for the LLM when leveraging projects in Claude Desktop.
 
+## Requirements: Node.js
+
+1. Install Node.js (version 18 or higher) and npm from [nodejs.org](https://nodejs.org/)
+2. Verify installation:
+   ```bash
+   node --version
+   npm --version
+   ```
+
 ⚠️ **Important**: Before running, make sure to setup your Airtable API key
 
 ## Obtaining an Airtable API Key
