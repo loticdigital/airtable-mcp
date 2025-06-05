@@ -1,212 +1,253 @@
 # Airtable MCP Server
 
-A Model Context Protocol server that provides tools for interacting with Airtable's API. This server enables programmatic management of Airtable bases, tables, fields, and records through Claude Desktop or other MCP clients.
+A comprehensive Model Context Protocol (MCP) server that provides full access to the Airtable Web API, including enterprise features. This server enables AI assistants to create, manage, and interact with Airtable bases, tables, fields, records, views, and webhooks.
 
-This MCP server features a specialized implementation that allows it to build tables in stages, leveraging Claude's agentic capabilities and minimizing the failure rate typically seen in other MCP servers for Airtable when building complex tables. It also includes [system prompt](https://github.com/felores/airtable-mcp/blob/main/prompts/system-prompt.md) and [project knowledge](https://github.com/felores/airtable-mcp/blob/main/prompts/project-knowledge.md) markdown files to provide additional guidance for the LLM when leveraging projects in Claude Desktop.
+## Features
 
-## Requirements: Node.js
+### 🏗️ **Base Management**
+- **List Bases**: Get all accessible bases in a workspace
+- **Get Base Schema**: Retrieve complete base structure with tables and fields
+- **Delete Base**: Remove bases (Enterprise only)
 
-1. Install Node.js (version 18 or higher) and npm from [nodejs.org](https://nodejs.org/)
-2. Verify installation:
-   ```bash
-   node --version
-   npm --version
-   ```
+### 📊 **Table Management**
+- **List Tables**: Get all tables in a base
+- **Create Table**: Create new tables with comprehensive field configurations
+- **Update Table**: Modify table properties and metadata
+- **Delete Table**: Remove tables (with proper permissions)
 
-⚠️ **Important**: Before running, make sure to setup your Airtable API key
+### 🔧 **Field Management**
+- **List Fields**: Get all fields in a table
+- **Create Field**: Add new fields with 25+ field types supported
+- **Update Field**: Modify existing field properties and options
+- **Delete Field**: Remove fields (with data considerations)
 
-## Obtaining an Airtable API Key
+#### Supported Field Types
+- **Basic Fields**: `singleLineText`, `multilineText`, `email`, `phoneNumber`, `richText`, `url`
+- **Numeric Fields**: `number`, `currency`, `percent`
+- **Date/Time Fields**: `date`, `dateTime`, `duration`
+- **Selection Fields**: `singleSelect`, `multipleSelects`
+- **Interactive Fields**: `rating`, `checkbox`
+- **Advanced Fields**: `formula`, `rollup`, `lookup`, `multipleRecordLinks`
+- **Specialized Fields**: `attachment`, `barcode`, `button`, `count`, `autoNumber`
 
-1. Log in to your Airtable account at [airtable.com](https://airtable.com)
-2. Create a personal access token at [Airtable's Builder Hub](https://airtable.com/create/tokens)
-3. In the Personal access token section select these scopes: 
-     - data.records:read
-     - data.records:write
-     - schema.bases:read
-     - schema.bases:write
-4. Select the workspace or bases you want to give access to the personal access token
-5. Keep this key secure - you'll need it for configuration
+### 📝 **Record Operations**
+- **List Records**: Basic record retrieval
+- **Advanced List Records**: Full filtering, sorting, pagination, and field selection
+- **Get Record**: Fetch individual record details
+- **Create Record**: Add single records
+- **Update Record**: Modify existing records
+- **Delete Record**: Remove records
+- **Batch Create Records**: Create multiple records efficiently
+- **Batch Update Records**: Update multiple records in one request
+- **Batch Delete Records**: Delete multiple records efficiently
+- **Search Records**: Find records using field-based search
+
+### 👁️ **View Management**
+- **List Views**: Get all views in a table
+- **Get View**: Retrieve view configuration
+- **Create View**: Create new views (grid, form, calendar, gallery, kanban, timeline, gantt)
+- **Update View**: Modify view properties, filters, and sorting
+- **Delete View**: Remove views
+
+### 🔔 **Webhook Management**
+- **List Webhooks**: Get all webhooks for a base
+- **Create Webhook**: Set up real-time notifications
+- **Update Webhook**: Modify webhook configuration
+- **Delete Webhook**: Remove webhook subscriptions
+- **Get Webhook Payloads**: Retrieve webhook notification history
+
+### 🏢 **Enterprise Features** (Enterprise Scale Plans)
+- **User Management**: Create, update, and deactivate users
+- **Workspace Management**: Manage workspace access and permissions
+- **Audit Logs**: Create and retrieve comprehensive audit logs
+- **Share Link Management**: Control base sharing across organization
+- **Collaborator Management**: Add/remove users from bases and workspaces
+- **Bulk Operations**: Perform enterprise-scale batch operations
 
 ## Installation
 
-### Method 1: Using npx (Recommended)
-1. Navigate to the Claude configuration directory:
+```bash
+npm install @loticdigital/airtable-mcp-server
+```
 
-   - Windows: `C:\Users\NAME\AppData\Roaming\Claude`
-   - macOS: `~/Library/Application Support/Claude/`
-   
-   You can also find these directories inside the Claude Desktop app: Claude Desktop > Settings > Developer > Edit Config
+## Configuration
 
-2. Create or edit `claude_desktop_config.json`:
+Set your Airtable API key as an environment variable:
+
+```bash
+export AIRTABLE_API_KEY=your_airtable_api_key_here
+```
+
+## Usage
+
+### With Claude Desktop
+
+Add to your Claude Desktop configuration:
+
 ```json
 {
   "mcpServers": {
     "airtable": {
       "command": "npx",
-      "args": ["@felores/airtable-mcp-server"],
+      "args": ["@loticdigital/airtable-mcp-server"],
       "env": {
-        "AIRTABLE_API_KEY": "your_api_key_here"
+        "AIRTABLE_API_KEY": "your_airtable_api_key_here"
       }
     }
   }
 }
 ```
-Note: For Windows paths, use double backslashes (\\) or forward slashes (/).
 
-### Method 2: Using mcp-installer:
-mcp-installer is a MCP server to install other MCP servers.
-1. Install [mcp-installer](https://github.com/anaisbetts/mcp-installer)
-2. Install the Airtable MCP server by prompting Claude Desktop:
+### With MCP Inspector
+
 ```bash
-Install @felores/airtable-mcp-server set the environment variable AIRTABLE_API_KEY to 'your_api_key'
+npx @modelcontextprotocol/inspector npx @loticdigital/airtable-mcp-server
 ```
-Claude will install the server, modify the configuration file and set the environment variable AIRTABLE_API_KEY to your Airtable API key.
 
-### Method 3: Local Development Installation
-If you want to contribute or modify the code run this in your terminal:
+## API Capabilities
+
+### Rate Limits & Best Practices
+- **Rate Limit**: 5 requests per second per base
+- **API Call Limits**: 
+  - Free: 1,000 calls per workspace per month
+  - Team: 100,000 calls per workspace per month
+  - Business/Enterprise: Unlimited calls
+- **Pagination**: Automatic handling of paginated responses
+- **Batch Operations**: Efficient bulk processing for multiple records
+- **Error Handling**: Comprehensive error recovery with exponential backoff
+
+### Advanced Features
+- **External ID Mapping**: Support for upsert operations
+- **Data Validation**: Comprehensive field validation
+- **Conflict Resolution**: Handle concurrent updates gracefully
+- **Change Tracking**: Monitor and log all data modifications
+- **Performance Optimization**: Caching and selective field requests
+
+### Security Features
+- **Token Management**: Secure PAT handling
+- **Data Protection**: Input validation and sanitization
+- **Enterprise Security**: Audit logging and compliance support
+- **Access Controls**: Proper permission handling
+
+## Field Configuration Examples
+
+### Basic Fields
+```json
+{
+  "name": "Title",
+  "type": "singleLineText",
+  "description": "Main title field"
+}
+```
+
+### Numeric Fields
+```json
+{
+  "name": "Price",
+  "type": "currency",
+  "options": {
+    "precision": 2,
+    "symbol": "$"
+  }
+}
+```
+
+### Selection Fields
+```json
+{
+  "name": "Status",
+  "type": "singleSelect",
+  "options": {
+    "choices": [
+      { "name": "Active", "color": "greenBright" },
+      { "name": "Pending", "color": "yellowBright" },
+      { "name": "Inactive", "color": "redBright" }
+    ]
+  }
+}
+```
+
+### Advanced Fields
+```json
+{
+  "name": "Full Name",
+  "type": "formula",
+  "options": {
+    "formula": "CONCATENATE({First Name}, ' ', {Last Name})"
+  }
+}
+```
+
+## Webhook Configuration
+
+```json
+{
+  "notificationUrl": "https://your-server.com/webhook",
+  "specification": {
+    "options": {
+      "filters": {
+        "dataTypes": ["tableData"],
+        "recordChangeScope": "tblXXXXXXXXXXXXXX"
+      }
+    }
+  }
+}
+```
+
+## Error Handling
+
+The server implements comprehensive error handling:
+
+- **401 Unauthorized**: Invalid or expired token
+- **403 Forbidden**: Insufficient permissions
+- **404 Not Found**: Resource doesn't exist
+- **422 Unprocessable Entity**: Invalid field configuration
+- **429 Too Many Requests**: Rate limit exceeded
+- **500 Internal Server Error**: Airtable service issue
+
+## Development
+
 ```bash
 # Clone the repository
-git clone https://github.com/felores/airtable-mcp.git
-cd airtable-mcp
+git clone https://github.com/loticdigital/airtable-mcp
 
 # Install dependencies
 npm install
 
-# Build the server
+# Build the project
 npm run build
 
-# Run locally
-node build/index.js
+# Run with inspector
+npm run inspector
 ```
-Then modify the Claude Desktop configuration file to use the local installation:
-```json
-{
-  "mcpServers": {
-    "airtable": {
-      "command": "node",
-      "args": ["path/to/airtable-mcp/build/index.js"],
-      "env": {
-        "AIRTABLE_API_KEY": "your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-### Verifying Installation
-
-1. Start Claude Desktop
-2. The Airtable MCP server should be listed in the "Connected MCP Servers" section
-3. Test with a simple command:
-```
-List all bases
-```
-
-## Features
-
-### Available Operations
-
-#### Base Management
-- `list_bases`: List all accessible Airtable bases
-- `list_tables`: List all tables in a base
-- `create_table`: Create a new table with fields
-- `update_table`: Update a table's name or description
-
-#### Field Management
-- `create_field`: Add a new field to a table
-- `update_field`: Modify an existing field
-
-#### Record Operations
-- `list_records`: Retrieve records from a table
-- `create_record`: Add a new record
-- `update_record`: Modify an existing record
-- `delete_record`: Remove a record
-- `search_records`: Find records matching criteria
-- `get_record`: Get a single record by its ID
-
-### Field Types
-- `singleLineText`: Single line text field
-- `multilineText`: Multi-line text area
-- `email`: Email address field
-- `phoneNumber`: Phone number field
-- `number`: Numeric field with optional precision
-- `currency`: Money field with currency symbol
-- `date`: Date field with format options
-- `singleSelect`: Single choice from options
-- `multiSelect`: Multiple choices from options
-
-### Field Colors
-Available colors for select fields:
-- `blueBright`, `redBright`, `greenBright`
-- `yellowBright`, `purpleBright`, `pinkBright`
-- `grayBright`, `cyanBright`, `orangeBright`
-- `blueDark1`, `greenDark1`
 
 ## Contributing
 
-We welcome contributions to improve the Airtable MCP server! Here's how you can contribute:
-
-1. Fork the Repository
-   - Visit https://github.com/felores/airtable-mcp
-   - Click the "Fork" button in the top right
-   - Clone your fork locally:
-     ```bash
-     git clone https://github.com/your-username/airtable-mcp.git
-     ```
-
-2. Create a Feature Branch
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-3. Make Your Changes
-   - Follow the existing code style
-   - Add tests if applicable
-   - Update documentation as needed
-
-4. Commit Your Changes
-   ```bash
-   git add .
-   git commit -m "feat: add your feature description"
-   ```
-
-5. Push to Your Fork
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-6. Create a Pull Request
-   - Go to your fork on GitHub
-   - Click "New Pull Request"
-   - Select your feature branch
-   - Describe your changes in detail
-
-### Development Guidelines
-
-- Use TypeScript for new code
-- Follow semantic commit messages
-- Update documentation for new features
-- Add examples for new functionality
-- Test your changes thoroughly
-
-### Getting Help
-
-- Open an issue for bugs or feature requests
-- Join discussions in existing issues
-- Ask questions in pull requests
-
-Your contributions help make this tool better for everyone. Whether it's:
-- Adding new features
-- Fixing bugs
-- Improving documentation
-- Suggesting enhancements
-
-We appreciate your help in making the Airtable MCP server more powerful and user-friendly!
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-[MIT](LICENSE)
+MIT License - see LICENSE file for details.
 
----
+## Support
 
-Made with ❤️ by the Airtable MCP community
+For issues and questions:
+- GitHub Issues: [https://github.com/loticdigital/airtable-mcp/issues](https://github.com/loticdigital/airtable-mcp/issues)
+- Documentation: [Airtable Web API](https://airtable.com/developers/web/api/introduction)
+
+## Changelog
+
+### v0.6.0 (Latest)
+- ✨ **Major Feature Expansion**: Added comprehensive Airtable Web API support
+- 🔧 **25+ Field Types**: Support for all Airtable field types including advanced fields
+- 👁️ **View Management**: Complete view CRUD operations
+- 🔔 **Webhook Support**: Real-time notifications and webhook management
+- 📊 **Advanced Record Operations**: Batch operations, advanced filtering, pagination
+- 🏢 **Enterprise Features**: User management, audit logs, workspace management
+- 🛡️ **Enhanced Security**: Comprehensive validation and error handling
+- ⚡ **Performance**: Optimized batch operations and caching strategies
+
+### v0.5.1
+- Basic table and field management
+- Simple record CRUD operations
+- Limited field type support

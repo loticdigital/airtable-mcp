@@ -9,7 +9,7 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios, { AxiosInstance } from "axios";
-import { FieldOption, fieldRequiresOptions, getDefaultOptions, FieldType } from "./types.js";
+import { FieldOption, fieldRequiresOptions, getDefaultOptions, FieldType, validateFieldOptions } from "./types.js";
 
 const API_KEY = process.env.AIRTABLE_API_KEY;
 if (!API_KEY) {
@@ -24,7 +24,7 @@ class AirtableServer {
     this.server = new Server(
       {
         name: "airtable-server",
-        version: "0.2.0",
+        version: "0.5.1",
       },
       {
         capabilities: {
@@ -65,6 +65,11 @@ class AirtableServer {
         ...field,
         options: getDefaultOptions(type as FieldType),
       };
+    }
+
+    // Validate field options
+    if (!validateFieldOptions(type as FieldType, field.options)) {
+      throw new Error(`Invalid options for field type ${type}: ${JSON.stringify(field.options)}`);
     }
 
     return field;
@@ -390,6 +395,577 @@ class AirtableServer {
             required: ["base_id", "table_name", "record_id"],
           },
         },
+        // Base Schema Operations
+        {
+          name: "get_base_schema",
+          description: "Get complete base schema including all tables and fields",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+            },
+            required: ["base_id"],
+          },
+        },
+        {
+          name: "delete_base",
+          description: "Delete a base (Enterprise only)",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base to delete",
+              },
+            },
+            required: ["base_id"],
+          },
+        },
+        // Advanced Record Operations
+        {
+          name: "batch_create_records",
+          description: "Create multiple records in a single request",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_name: {
+                type: "string",
+                description: "Name of the table",
+              },
+              records: {
+                type: "array",
+                description: "Array of records to create",
+                items: {
+                  type: "object",
+                  properties: {
+                    fields: {
+                      type: "object",
+                      description: "Record fields as key-value pairs",
+                    },
+                  },
+                  required: ["fields"],
+                },
+              },
+              typecast: {
+                type: "boolean",
+                description: "Automatically convert field types",
+              },
+            },
+            required: ["base_id", "table_name", "records"],
+          },
+        },
+        {
+          name: "batch_update_records",
+          description: "Update multiple records in a single request",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_name: {
+                type: "string",
+                description: "Name of the table",
+              },
+              records: {
+                type: "array",
+                description: "Array of records to update",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: {
+                      type: "string",
+                      description: "Record ID",
+                    },
+                    fields: {
+                      type: "object",
+                      description: "Record fields to update",
+                    },
+                  },
+                  required: ["id", "fields"],
+                },
+              },
+              typecast: {
+                type: "boolean",
+                description: "Automatically convert field types",
+              },
+            },
+            required: ["base_id", "table_name", "records"],
+          },
+        },
+        {
+          name: "batch_delete_records",
+          description: "Delete multiple records in a single request",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_name: {
+                type: "string",
+                description: "Name of the table",
+              },
+              record_ids: {
+                type: "array",
+                description: "Array of record IDs to delete",
+                items: {
+                  type: "string",
+                },
+              },
+            },
+            required: ["base_id", "table_name", "record_ids"],
+          },
+        },
+        {
+          name: "advanced_list_records",
+          description: "List records with advanced filtering, sorting, and pagination",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_name: {
+                type: "string",
+                description: "Name of the table",
+              },
+              filter_by_formula: {
+                type: "string",
+                description: "Airtable formula to filter records",
+              },
+              sort: {
+                type: "array",
+                description: "Sort configuration",
+                items: {
+                  type: "object",
+                  properties: {
+                    field: {
+                      type: "string",
+                      description: "Field name to sort by",
+                    },
+                    direction: {
+                      type: "string",
+                      enum: ["asc", "desc"],
+                      description: "Sort direction",
+                    },
+                  },
+                  required: ["field"],
+                },
+              },
+              max_records: {
+                type: "number",
+                description: "Maximum number of records to return",
+              },
+              page_size: {
+                type: "number",
+                description: "Number of records per page (max 100)",
+              },
+              view: {
+                type: "string",
+                description: "Name or ID of view to use",
+              },
+              fields: {
+                type: "array",
+                description: "Specific fields to return",
+                items: {
+                  type: "string",
+                },
+              },
+              cell_format: {
+                type: "string",
+                enum: ["json", "string"],
+                description: "Format for cell values",
+              },
+              time_zone: {
+                type: "string",
+                description: "Time zone for date/time fields",
+              },
+              user_locale: {
+                type: "string",
+                description: "User locale for formatting",
+              },
+              offset: {
+                type: "string",
+                description: "Pagination offset token",
+              },
+            },
+            required: ["base_id", "table_name"],
+          },
+        },
+        // View Management
+        {
+          name: "list_views",
+          description: "List all views in a table",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+            },
+            required: ["base_id", "table_id"],
+          },
+        },
+        {
+          name: "get_view",
+          description: "Get view configuration",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+              view_id: {
+                type: "string",
+                description: "ID of the view",
+              },
+            },
+            required: ["base_id", "table_id", "view_id"],
+          },
+        },
+        {
+          name: "create_view",
+          description: "Create a new view in a table",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+              view: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                    description: "Name of the view",
+                  },
+                  type: {
+                    type: "string",
+                    enum: ["grid", "form", "calendar", "gallery", "kanban", "timeline", "gantt"],
+                    description: "Type of view",
+                  },
+                  visible_field_ids: {
+                    type: "array",
+                    description: "Array of field IDs to show in view",
+                    items: {
+                      type: "string",
+                    },
+                  },
+                  filter_by_formula: {
+                    type: "string",
+                    description: "Formula to filter records in view",
+                  },
+                  sort_fields: {
+                    type: "array",
+                    description: "Sort configuration for view",
+                    items: {
+                      type: "object",
+                      properties: {
+                        field_id: {
+                          type: "string",
+                          description: "Field ID to sort by",
+                        },
+                        direction: {
+                          type: "string",
+                          enum: ["asc", "desc"],
+                          description: "Sort direction",
+                        },
+                      },
+                      required: ["field_id"],
+                    },
+                  },
+                },
+                required: ["name", "type"],
+              },
+            },
+            required: ["base_id", "table_id", "view"],
+          },
+        },
+        {
+          name: "update_view",
+          description: "Update an existing view",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+              view_id: {
+                type: "string",
+                description: "ID of the view to update",
+              },
+              updates: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                    description: "New name for the view",
+                  },
+                  visible_field_ids: {
+                    type: "array",
+                    description: "Array of field IDs to show in view",
+                    items: {
+                      type: "string",
+                    },
+                  },
+                  filter_by_formula: {
+                    type: "string",
+                    description: "Formula to filter records in view",
+                  },
+                  sort_fields: {
+                    type: "array",
+                    description: "Sort configuration for view",
+                    items: {
+                      type: "object",
+                      properties: {
+                        field_id: {
+                          type: "string",
+                          description: "Field ID to sort by",
+                        },
+                        direction: {
+                          type: "string",
+                          enum: ["asc", "desc"],
+                          description: "Sort direction",
+                        },
+                      },
+                      required: ["field_id"],
+                    },
+                  },
+                },
+              },
+            },
+            required: ["base_id", "table_id", "view_id", "updates"],
+          },
+        },
+        {
+          name: "delete_view",
+          description: "Delete a view from a table",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+              view_id: {
+                type: "string",
+                description: "ID of the view to delete",
+              },
+            },
+            required: ["base_id", "table_id", "view_id"],
+          },
+        },
+        // Field Management
+        {
+          name: "list_fields",
+          description: "List all fields in a table",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+            },
+            required: ["base_id", "table_id"],
+          },
+        },
+        {
+          name: "delete_field",
+          description: "Delete a field from a table",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              table_id: {
+                type: "string",
+                description: "ID of the table",
+              },
+              field_id: {
+                type: "string",
+                description: "ID of the field to delete",
+              },
+            },
+            required: ["base_id", "table_id", "field_id"],
+          },
+        },
+        // Webhook Management
+        {
+          name: "list_webhooks",
+          description: "List all webhooks for a base",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+            },
+            required: ["base_id"],
+          },
+        },
+        {
+          name: "create_webhook",
+          description: "Create a new webhook for real-time notifications",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              notification_url: {
+                type: "string",
+                description: "URL to receive webhook notifications",
+              },
+              specification: {
+                type: "object",
+                properties: {
+                  options: {
+                    type: "object",
+                    properties: {
+                      filters: {
+                        type: "object",
+                        properties: {
+                          data_types: {
+                            type: "array",
+                            description: "Types of data changes to monitor",
+                            items: {
+                              type: "string",
+                              enum: ["tableData", "tableSchema", "tableMetadata"],
+                            },
+                          },
+                          record_change_scope: {
+                            type: "string",
+                            description: "Table ID to monitor for record changes",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            required: ["base_id", "notification_url", "specification"],
+          },
+        },
+        {
+          name: "update_webhook",
+          description: "Update an existing webhook",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              webhook_id: {
+                type: "string",
+                description: "ID of the webhook to update",
+              },
+              updates: {
+                type: "object",
+                properties: {
+                  notification_url: {
+                    type: "string",
+                    description: "New URL to receive webhook notifications",
+                  },
+                  specification: {
+                    type: "object",
+                    description: "Updated webhook specification",
+                  },
+                },
+              },
+            },
+            required: ["base_id", "webhook_id", "updates"],
+          },
+        },
+        {
+          name: "delete_webhook",
+          description: "Delete a webhook",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              webhook_id: {
+                type: "string",
+                description: "ID of the webhook to delete",
+              },
+            },
+            required: ["base_id", "webhook_id"],
+          },
+        },
+        {
+          name: "get_webhook_payloads",
+          description: "Get webhook notification history",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              webhook_id: {
+                type: "string",
+                description: "ID of the webhook",
+              },
+              cursor: {
+                type: "string",
+                description: "Pagination cursor",
+              },
+              limit: {
+                type: "number",
+                description: "Number of payloads to return",
+              },
+            },
+            required: ["base_id", "webhook_id"],
+          },
+        },
       ],
     }));
 
@@ -606,6 +1182,320 @@ class AirtableServer {
             const response = await this.axiosInstance.get(
               `/${base_id}/${table_name}/${record_id}`
             );
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          // Base Schema Operations
+          case "get_base_schema": {
+            const { base_id } = request.params.arguments as { base_id: string };
+            const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "delete_base": {
+            const { base_id } = request.params.arguments as { base_id: string };
+            const response = await this.axiosInstance.delete(`/meta/bases/${base_id}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          // Advanced Record Operations
+          case "batch_create_records": {
+            const { base_id, table_name, records, typecast } = request.params.arguments as {
+              base_id: string;
+              table_name: string;
+              records: Array<{ fields: Record<string, any> }>;
+              typecast?: boolean;
+            };
+            const response = await this.axiosInstance.post(`/${base_id}/${table_name}`, {
+              records,
+              typecast,
+            });
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "batch_update_records": {
+            const { base_id, table_name, records, typecast } = request.params.arguments as {
+              base_id: string;
+              table_name: string;
+              records: Array<{ id: string; fields: Record<string, any> }>;
+              typecast?: boolean;
+            };
+            const response = await this.axiosInstance.patch(`/${base_id}/${table_name}`, {
+              records,
+              typecast,
+            });
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "batch_delete_records": {
+            const { base_id, table_name, record_ids } = request.params.arguments as {
+              base_id: string;
+              table_name: string;
+              record_ids: string[];
+            };
+            const response = await this.axiosInstance.delete(`/${base_id}/${table_name}`, {
+              params: { records: record_ids },
+            });
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "advanced_list_records": {
+            const { 
+              base_id, 
+              table_name, 
+              filter_by_formula,
+              sort,
+              max_records,
+              page_size,
+              view,
+              fields,
+              cell_format,
+              time_zone,
+              user_locale,
+              offset
+            } = request.params.arguments as {
+              base_id: string;
+              table_name: string;
+              filter_by_formula?: string;
+              sort?: Array<{ field: string; direction?: string }>;
+              max_records?: number;
+              page_size?: number;
+              view?: string;
+              fields?: string[];
+              cell_format?: string;
+              time_zone?: string;
+              user_locale?: string;
+              offset?: string;
+            };
+
+            const params: Record<string, any> = {};
+            if (filter_by_formula) params.filterByFormula = filter_by_formula;
+            if (sort) params.sort = sort;
+            if (max_records) params.maxRecords = max_records;
+            if (page_size) params.pageSize = page_size;
+            if (view) params.view = view;
+            if (fields) params.fields = fields;
+            if (cell_format) params.cellFormat = cell_format;
+            if (time_zone) params.timeZone = time_zone;
+            if (user_locale) params.userLocale = user_locale;
+            if (offset) params.offset = offset;
+
+            const response = await this.axiosInstance.get(`/${base_id}/${table_name}`, { params });
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          // View Management
+          case "list_views": {
+            const { base_id, table_id } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+            };
+            const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables/${table_id}/views`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "get_view": {
+            const { base_id, table_id, view_id } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+              view_id: string;
+            };
+            const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables/${table_id}/views/${view_id}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "create_view": {
+            const { base_id, table_id, view } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+              view: Record<string, any>;
+            };
+            const response = await this.axiosInstance.post(`/meta/bases/${base_id}/tables/${table_id}/views`, view);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "update_view": {
+            const { base_id, table_id, view_id, updates } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+              view_id: string;
+              updates: Record<string, any>;
+            };
+            const response = await this.axiosInstance.patch(`/meta/bases/${base_id}/tables/${table_id}/views/${view_id}`, updates);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "delete_view": {
+            const { base_id, table_id, view_id } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+              view_id: string;
+            };
+            const response = await this.axiosInstance.delete(`/meta/bases/${base_id}/tables/${table_id}/views/${view_id}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          // Field Management
+          case "list_fields": {
+            const { base_id, table_id } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+            };
+            const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables/${table_id}/fields`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "delete_field": {
+            const { base_id, table_id, field_id } = request.params.arguments as {
+              base_id: string;
+              table_id: string;
+              field_id: string;
+            };
+            const response = await this.axiosInstance.delete(`/meta/bases/${base_id}/tables/${table_id}/fields/${field_id}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          // Webhook Management
+          case "list_webhooks": {
+            const { base_id } = request.params.arguments as { base_id: string };
+            const response = await this.axiosInstance.get(`/bases/${base_id}/webhooks`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "create_webhook": {
+            const { base_id, notification_url, specification } = request.params.arguments as {
+              base_id: string;
+              notification_url: string;
+              specification: Record<string, any>;
+            };
+            const response = await this.axiosInstance.post(`/bases/${base_id}/webhooks`, {
+              notificationUrl: notification_url,
+              specification,
+            });
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "update_webhook": {
+            const { base_id, webhook_id, updates } = request.params.arguments as {
+              base_id: string;
+              webhook_id: string;
+              updates: Record<string, any>;
+            };
+            const response = await this.axiosInstance.patch(`/bases/${base_id}/webhooks/${webhook_id}`, updates);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "delete_webhook": {
+            const { base_id, webhook_id } = request.params.arguments as {
+              base_id: string;
+              webhook_id: string;
+            };
+            const response = await this.axiosInstance.delete(`/bases/${base_id}/webhooks/${webhook_id}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              }],
+            };
+          }
+
+          case "get_webhook_payloads": {
+            const { base_id, webhook_id, cursor, limit } = request.params.arguments as {
+              base_id: string;
+              webhook_id: string;
+              cursor?: string;
+              limit?: number;
+            };
+            const params: Record<string, any> = {};
+            if (cursor) params.cursor = cursor;
+            if (limit) params.limit = limit;
+
+            const response = await this.axiosInstance.get(`/bases/${base_id}/webhooks/${webhook_id}/payloads`, { params });
             return {
               content: [{
                 type: "text",

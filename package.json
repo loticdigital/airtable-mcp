@@ -1,6 +1,6 @@
 {
   "name": "@loticdigital/airtable-mcp-server",
-  "version": "0.4.0",
+  "version": "0.5.1",
   "description": "Full feature Airtable Model Context Protocol Server",
   "type": "module",
   "bin": {
@@ -24,7 +24,7 @@
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3"
   },
-  "author": "Felipe Restrepo",
+  "author": "Lorenzo Lee",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -32,9 +32,16 @@
   },
   "keywords": [
     "airtable",
+    "model-context-protocol",
+    "cursor",
+    "claude",
+    "cursor",
+    "claude",
+    "api",
+    "openai",
     "mcp",
     "model-context-protocol",
-    "claude",
+    "mcp-server",
     "api"
   ],
   "engines": {
