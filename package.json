@@ -1,7 +1,7 @@
 {
-  "name": "@felores/airtable-mcp-server",
-  "version": "0.3.0",
-  "description": "An Airtable Model Context Protocol Server",
+  "name": "@loticdigital/airtable-mcp-server",
+  "version": "0.4.0",
+  "description": "Full feature Airtable Model Context Protocol Server",
   "type": "module",
   "bin": {
     "airtable-server": "build/index.js"
@@ -28,7 +28,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/felores/airtable-mcp"
+    "url": "https://github.com/loticdigital/airtable-mcp"
   },
   "keywords": [
     "airtable",
