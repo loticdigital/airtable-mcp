@@ -19,6 +19,7 @@ if (!API_KEY) {
 class AirtableServer {
   private server: Server;
   private axiosInstance: AxiosInstance;
+  private requestCount: Map<string, number> = new Map();
 
   constructor() {
     this.server = new Server(
@@ -73,6 +74,116 @@ class AirtableServer {
     }
 
     return field;
+  }
+
+  private truncateResponse(data: any, maxLength: number = 5000): string {
+    const jsonString = JSON.stringify(data, null, 2);
+    if (jsonString.length <= maxLength) {
+      return jsonString;
+    }
+    
+    // If it's an array, try to show first few items
+    if (Array.isArray(data)) {
+      const truncatedArray = data.slice(0, 3);
+      const truncatedString = JSON.stringify(truncatedArray, null, 2);
+      return `${truncatedString.slice(0, -1)}\n  ... (${data.length - 3} more items truncated)\n]`;
+    }
+    
+    // For objects, truncate the string
+    return jsonString.slice(0, maxLength) + '\n... (response truncated due to size)';
+  }
+
+  private formatSuccessResponse(data: any, operation: string): any {
+    return {
+      content: [{
+        type: "text",
+        text: `✅ ${operation} completed successfully:\n\n${this.truncateResponse(data)}`,
+      }],
+    };
+  }
+
+  private formatErrorResponse(error: any, operation: string): any {
+    return {
+      isError: true,
+      content: [{
+        type: "text",
+        text: `❌ ${operation} failed: ${error.message || error}`,
+      }],
+    };
+  }
+
+  private formatListResponse(items: any[], operation: string, itemType: string, baseId?: string): any {
+    if (!Array.isArray(items) || items.length === 0) {
+      return {
+        content: [{
+          type: "text",
+          text: `✅ ${operation} completed: No ${itemType} found.`,
+        }],
+      };
+    }
+
+    // Always show ALL items with their essential info for discoverability
+    const allItemsSummary = items.map((item, index) => {
+      const name = item.name || item.title || `${itemType} ${index + 1}`;
+      const id = item.id || '';
+      return `${name} (${id})`;
+    }).join(', ');
+
+    // Show detailed info for first few items
+    const detailedItems = items.slice(0, 3);
+    const detailedInfo = this.truncateResponse(detailedItems, 3000);
+
+    // Generate next steps based on operation type
+    let nextSteps = '';
+    if (operation === 'list_tables' && baseId) {
+      nextSteps = `\n\n📋 Next Steps:\n- Use list_fields with base_id="${baseId}" and table_id="<table_id>" to see fields\n- Use list_records with base_id="${baseId}" and table_name="<table_name>" to see data\n- Use get_base_schema with base_id="${baseId}" for complete schema`;
+    } else if (operation === 'list_records') {
+      nextSteps = `\n\n📋 Next Steps:\n- Use get_record with record_id="<record_id>" for full record details\n- Use search_records to filter by specific criteria\n- Use advanced_list_records for pagination and filtering`;
+    } else if (operation === 'list_fields' && baseId) {
+      nextSteps = `\n\n📋 Next Steps:\n- Use create_field to add new fields\n- Use update_field to modify existing fields\n- Use list_records to see how these fields are used`;
+    } else if (operation === 'list_bases') {
+      nextSteps = `\n\n📋 Next Steps:\n- Use list_tables with base_id="<base_id>" to see tables in each base\n- Use get_base_schema with base_id="<base_id>" for complete base structure`;
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: `✅ ${operation} completed: Found ${items.length} ${itemType}(s)\n\n🔍 All ${itemType}s: ${allItemsSummary}\n\n📊 Detailed info for first ${Math.min(3, items.length)}:\n${detailedInfo}${nextSteps}`,
+      }],
+    };
+  }
+
+  private formatRecordsResponse(data: any, operation: string, baseId: string, tableName: string): any {
+    const records = data.records || [];
+    const offset = data.offset;
+    
+    if (records.length === 0) {
+      return {
+        content: [{
+          type: "text",
+          text: `✅ ${operation} completed: No records found in table "${tableName}".`,
+        }],
+      };
+    }
+
+    // Show all record IDs for discoverability
+    const allRecordIds = records.map((record: any) => record.id).join(', ');
+    
+    // Show detailed info for first few records
+    const detailedRecords = records.slice(0, 3);
+    const detailedInfo = this.truncateResponse(detailedRecords, 3000);
+
+    // Pagination info
+    const paginationInfo = offset ? `\n\n📄 Pagination: More records available. Use advanced_list_records with offset="${offset}" to get next page.` : '\n\n📄 Pagination: All records shown (no more pages).';
+
+    const nextSteps = `\n\n📋 Next Steps:\n- Use get_record with base_id="${baseId}", table_name="${tableName}", record_id="<record_id>" for full details\n- Use search_records to filter by field values\n- Use update_record or delete_record to modify data${paginationInfo}`;
+
+    return {
+      content: [{
+        type: "text",
+        text: `✅ ${operation} completed: Found ${records.length} record(s) in "${tableName}"\n\n🔍 All record IDs: ${allRecordIds}\n\n📊 Detailed info for first ${Math.min(3, records.length)} records:\n${detailedInfo}${nextSteps}`,
+      }],
+    };
   }
 
   private setupToolHandlers() {
@@ -970,27 +1081,32 @@ class AirtableServer {
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const toolName = request.params.name;
+      const requestKey = `${toolName}_${JSON.stringify(request.params.arguments)}`;
+      
+      // Track request count to detect potential infinite loops
+      const currentCount = this.requestCount.get(requestKey) || 0;
+      this.requestCount.set(requestKey, currentCount + 1);
+      
+      // Log the request for debugging
+      console.log(`[MCP] Tool called: ${toolName} (count: ${currentCount + 1})`);
+      
+      // Clear old request counts periodically
+      if (this.requestCount.size > 100) {
+        this.requestCount.clear();
+      }
+
       try {
         switch (request.params.name) {
           case "list_bases": {
             const response = await this.axiosInstance.get("/meta/bases");
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data.bases, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data.bases, "list_bases", "base");
           }
 
           case "list_tables": {
             const { base_id } = request.params.arguments as { base_id: string };
             const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data.tables, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data.tables, "list_tables", "table", base_id);
           }
 
           case "create_table": {
@@ -1010,12 +1126,7 @@ class AirtableServer {
               fields: validatedFields,
             });
             
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "create_table");
           }
 
           case "update_table": {
@@ -1031,12 +1142,7 @@ class AirtableServer {
               description,
             });
             
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "update_table");
           }
 
           case "create_field": {
@@ -1054,12 +1160,7 @@ class AirtableServer {
               validatedField
             );
             
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "create_field");
           }
 
           case "update_field": {
@@ -1075,12 +1176,7 @@ class AirtableServer {
               updates
             );
             
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "update_field");
           }
 
           case "list_records": {
@@ -1092,12 +1188,7 @@ class AirtableServer {
             const response = await this.axiosInstance.get(`/${base_id}/${table_name}`, {
               params: max_records ? { maxRecords: max_records } : undefined,
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data.records, null, 2),
-              }],
-            };
+            return this.formatRecordsResponse(response.data, "list_records", base_id, table_name);
           }
 
           case "create_record": {
@@ -1109,12 +1200,7 @@ class AirtableServer {
             const response = await this.axiosInstance.post(`/${base_id}/${table_name}`, {
               fields,
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "create_record");
           }
 
           case "update_record": {
@@ -1128,12 +1214,7 @@ class AirtableServer {
               `/${base_id}/${table_name}/${record_id}`,
               { fields }
             );
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "update_record");
           }
 
           case "delete_record": {
@@ -1145,12 +1226,7 @@ class AirtableServer {
             const response = await this.axiosInstance.delete(
               `/${base_id}/${table_name}/${record_id}`
             );
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "delete_record");
           }
 
           case "search_records": {
@@ -1165,12 +1241,7 @@ class AirtableServer {
                 filterByFormula: `{${field_name}} = "${value}"`,
               },
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data.records, null, 2),
-              }],
-            };
+            return this.formatRecordsResponse(response.data, "search_records", base_id, table_name);
           }
 
           case "get_record": {
@@ -1182,35 +1253,20 @@ class AirtableServer {
             const response = await this.axiosInstance.get(
               `/${base_id}/${table_name}/${record_id}`
             );
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "get_record");
           }
 
           // Base Schema Operations
           case "get_base_schema": {
             const { base_id } = request.params.arguments as { base_id: string };
             const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data, "get_base_schema", "table");
           }
 
           case "delete_base": {
             const { base_id } = request.params.arguments as { base_id: string };
             const response = await this.axiosInstance.delete(`/meta/bases/${base_id}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "delete_base");
           }
 
           // Advanced Record Operations
@@ -1225,12 +1281,7 @@ class AirtableServer {
               records,
               typecast,
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "batch_create_records");
           }
 
           case "batch_update_records": {
@@ -1244,12 +1295,7 @@ class AirtableServer {
               records,
               typecast,
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "batch_update_records");
           }
 
           case "batch_delete_records": {
@@ -1261,12 +1307,7 @@ class AirtableServer {
             const response = await this.axiosInstance.delete(`/${base_id}/${table_name}`, {
               params: { records: record_ids },
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "batch_delete_records");
           }
 
           case "advanced_list_records": {
@@ -1311,12 +1352,7 @@ class AirtableServer {
             if (offset) params.offset = offset;
 
             const response = await this.axiosInstance.get(`/${base_id}/${table_name}`, { params });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatRecordsResponse(response.data, "advanced_list_records", base_id, table_name);
           }
 
           // View Management
@@ -1326,12 +1362,7 @@ class AirtableServer {
               table_id: string;
             };
             const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables/${table_id}/views`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data, "list_views", "view");
           }
 
           case "get_view": {
@@ -1341,12 +1372,7 @@ class AirtableServer {
               view_id: string;
             };
             const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables/${table_id}/views/${view_id}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "get_view");
           }
 
           case "create_view": {
@@ -1356,12 +1382,7 @@ class AirtableServer {
               view: Record<string, any>;
             };
             const response = await this.axiosInstance.post(`/meta/bases/${base_id}/tables/${table_id}/views`, view);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "create_view");
           }
 
           case "update_view": {
@@ -1372,12 +1393,7 @@ class AirtableServer {
               updates: Record<string, any>;
             };
             const response = await this.axiosInstance.patch(`/meta/bases/${base_id}/tables/${table_id}/views/${view_id}`, updates);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "update_view");
           }
 
           case "delete_view": {
@@ -1387,12 +1403,7 @@ class AirtableServer {
               view_id: string;
             };
             const response = await this.axiosInstance.delete(`/meta/bases/${base_id}/tables/${table_id}/views/${view_id}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "delete_view");
           }
 
           // Field Management
@@ -1402,12 +1413,7 @@ class AirtableServer {
               table_id: string;
             };
             const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables/${table_id}/fields`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data, "list_fields", "field", base_id);
           }
 
           case "delete_field": {
@@ -1417,24 +1423,14 @@ class AirtableServer {
               field_id: string;
             };
             const response = await this.axiosInstance.delete(`/meta/bases/${base_id}/tables/${table_id}/fields/${field_id}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "delete_field");
           }
 
           // Webhook Management
           case "list_webhooks": {
             const { base_id } = request.params.arguments as { base_id: string };
             const response = await this.axiosInstance.get(`/bases/${base_id}/webhooks`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data, "list_webhooks", "webhook");
           }
 
           case "create_webhook": {
@@ -1447,12 +1443,7 @@ class AirtableServer {
               notificationUrl: notification_url,
               specification,
             });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "create_webhook");
           }
 
           case "update_webhook": {
@@ -1462,12 +1453,7 @@ class AirtableServer {
               updates: Record<string, any>;
             };
             const response = await this.axiosInstance.patch(`/bases/${base_id}/webhooks/${webhook_id}`, updates);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "update_webhook");
           }
 
           case "delete_webhook": {
@@ -1476,12 +1462,7 @@ class AirtableServer {
               webhook_id: string;
             };
             const response = await this.axiosInstance.delete(`/bases/${base_id}/webhooks/${webhook_id}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatSuccessResponse(response.data, "delete_webhook");
           }
 
           case "get_webhook_payloads": {
@@ -1496,12 +1477,7 @@ class AirtableServer {
             if (limit) params.limit = limit;
 
             const response = await this.axiosInstance.get(`/bases/${base_id}/webhooks/${webhook_id}/payloads`, { params });
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              }],
-            };
+            return this.formatListResponse(response.data, "get_webhook_payloads", "payload");
           }
 
           default:
@@ -1509,12 +1485,12 @@ class AirtableServer {
         }
       } catch (error) {
         if (axios.isAxiosError(error)) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Airtable API error: ${error.response?.data?.error?.message ?? error.message}`
+          return this.formatErrorResponse(
+            error.response?.data?.error?.message ?? error.message,
+            request.params.name
           );
         }
-        throw error;
+        return this.formatErrorResponse(error, request.params.name);
       }
     });
   }
