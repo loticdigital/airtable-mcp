@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+// Polyfill for AbortController if not available
+if (typeof globalThis.AbortController === 'undefined') {
+  // @ts-ignore
+  globalThis.AbortController = (await import('abort-controller')).AbortController;
+}
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -1088,8 +1094,8 @@ class AirtableServer {
       const currentCount = this.requestCount.get(requestKey) || 0;
       this.requestCount.set(requestKey, currentCount + 1);
       
-      // Log the request for debugging
-      console.log(`[MCP] Tool called: ${toolName} (count: ${currentCount + 1})`);
+      // Log the request for debugging (to stderr to avoid interfering with JSON-RPC)
+      console.error(`[MCP] Tool called: ${toolName} (count: ${currentCount + 1})`);
       
       // Clear old request counts periodically
       if (this.requestCount.size > 100) {
