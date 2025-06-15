@@ -1,6 +1,6 @@
 {
   "name": "@loticdigital/airtable-mcp-server",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Full feature Airtable Model Context Protocol Server",
   "type": "module",
   "bin": {
