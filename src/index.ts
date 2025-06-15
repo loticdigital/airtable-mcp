@@ -50,7 +50,8 @@ class AirtableServer {
     this.setupToolHandlers();
     
     // Error handling
-    this.server.onerror = (error) => console.error("[MCP Error]", error);
+    // RPC-MCP stream error: console output interferes with JSON-RPC protocol
+    this.server.onerror = (error) => {}; // console.error("[MCP Error]", error);
     process.on("SIGINT", async () => {
       await this.server.close();
       process.exit(0);
@@ -1095,7 +1096,8 @@ class AirtableServer {
       this.requestCount.set(requestKey, currentCount + 1);
       
       // Log the request for debugging (to stderr to avoid interfering with JSON-RPC)
-      console.error(`[MCP] Tool called: ${toolName} (count: ${currentCount + 1})`);
+      // RPC-MCP stream error: console output interferes with JSON-RPC protocol
+      // console.error(`[MCP] Tool called: ${toolName} (count: ${currentCount + 1}`);
       
       // Clear old request counts periodically
       if (this.requestCount.size > 100) {
@@ -1504,12 +1506,14 @@ class AirtableServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error("Airtable MCP server running on stdio");
+    // RPC-MCP stream error: console output interferes with JSON-RPC protocol
+    // console.error("Airtable MCP server running on stdio");
   }
 }
 
 const server = new AirtableServer();
 server.run().catch((error) => {
-  console.error("Server error:", error);
+  // RPC-MCP stream error: console output interferes with JSON-RPC protocol
+  // console.error("Server error:", error);
   process.exit(1);
 });
