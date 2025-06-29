@@ -1268,7 +1268,7 @@ class AirtableServer {
           case "get_base_schema": {
             const { base_id } = request.params.arguments as { base_id: string };
             const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
-            return this.formatListResponse(response.data, "get_base_schema", "table");
+            return this.formatListResponse(response.data.tables, "get_base_schema", "table");
           }
 
           case "delete_base": {
