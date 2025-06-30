@@ -15,6 +15,7 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios, { AxiosInstance } from "axios";
+import * as https from "https";
 import { FieldOption, fieldRequiresOptions, getDefaultOptions, FieldType, validateFieldOptions } from "./types.js";
 
 const API_KEY = process.env.AIRTABLE_API_KEY;
@@ -22,10 +23,137 @@ if (!API_KEY) {
   throw new Error("AIRTABLE_API_KEY environment variable is required");
 }
 
+// Schema cache for handling large responses
+class SchemaCache {
+  private cache = new Map<string, {
+    data: any,
+    summary: any,
+    timestamp: number,
+    chunks?: string[],
+    totalSize: number
+  }>();
+  
+  private readonly MAX_AGE = 30 * 60 * 1000; // 30 minutes
+  private readonly CHUNK_SIZE = 15000; // Conservative chunk size for tokens
+  
+  async fetchAndStore(baseId: string, axiosInstance: AxiosInstance): Promise<string> {
+    try {
+      // Fetch the schema
+      const response = await axiosInstance.get(`/meta/bases/${baseId}/tables`);
+      const data = response.data;
+      
+      // Create summary
+      const summary = {
+        baseId,
+        tableCount: data.tables?.length || 0,
+        tables: data.tables?.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          fieldCount: t.fields?.length || 0,
+          viewCount: t.views?.length || 0
+        })) || []
+      };
+      
+      // Generate cache ID
+      const cacheId = `${baseId}-${Date.now()}`;
+      
+      // Store in cache
+      const fullJson = JSON.stringify(data, null, 2);
+      this.cache.set(cacheId, {
+        data,
+        summary,
+        timestamp: Date.now(),
+        totalSize: fullJson.length
+      });
+      
+      // Clean old entries
+      this.cleanOldEntries();
+      
+      return cacheId;
+    } catch (error) {
+      throw error;
+    }
+  }
+  
+  getChunk(cacheId: string, offset: number = 0): any {
+    const cached = this.cache.get(cacheId);
+    if (!cached) {
+      return { error: "Cache entry not found. Please fetch the schema first." };
+    }
+    
+    // Create chunks on demand
+    if (!cached.chunks) {
+      const fullJson = JSON.stringify(cached.data, null, 2);
+      cached.chunks = this.splitIntoChunks(fullJson);
+    }
+    
+    if (offset >= cached.chunks.length) {
+      return { error: "Invalid chunk offset" };
+    }
+    
+    return {
+      chunk: cached.chunks[offset],
+      chunkIndex: offset,
+      totalChunks: cached.chunks.length,
+      hasMore: offset < cached.chunks.length - 1,
+      cacheId
+    };
+  }
+  
+  getSummary(cacheId: string): any {
+    const cached = this.cache.get(cacheId);
+    return cached?.summary || null;
+  }
+  
+  private splitIntoChunks(text: string): string[] {
+    const chunks: string[] = [];
+    
+    // Split by lines to avoid breaking JSON structure
+    const lines = text.split('\n');
+    let currentChunk = '';
+    
+    for (const line of lines) {
+      if ((currentChunk.length + line.length + 1) > this.CHUNK_SIZE && currentChunk.length > 0) {
+        chunks.push(currentChunk);
+        currentChunk = line;
+      } else {
+        currentChunk += (currentChunk ? '\n' : '') + line;
+      }
+    }
+    
+    if (currentChunk) {
+      chunks.push(currentChunk);
+    }
+    
+    return chunks;
+  }
+  
+  private cleanOldEntries() {
+    const now = Date.now();
+    for (const [id, entry] of this.cache) {
+      if (now - entry.timestamp > this.MAX_AGE) {
+        this.cache.delete(id);
+      }
+    }
+  }
+  
+  listCached(): any[] {
+    const now = Date.now();
+    return Array.from(this.cache.entries()).map(([id, entry]) => ({
+      cacheId: id,
+      baseId: entry.summary.baseId,
+      tableCount: entry.summary.tableCount,
+      age: Math.floor((now - entry.timestamp) / 1000 / 60), // age in minutes
+      totalSize: entry.totalSize
+    }));
+  }
+}
+
 class AirtableServer {
   private server: Server;
   private axiosInstance: AxiosInstance;
   private requestCount: Map<string, number> = new Map();
+  private schemaCache: SchemaCache;
 
   constructor() {
     this.server = new Server(
@@ -46,6 +174,8 @@ class AirtableServer {
         Authorization: `Bearer ${API_KEY}`,
       },
     });
+
+    this.schemaCache = new SchemaCache();
 
     this.setupToolHandlers();
     
@@ -81,6 +211,53 @@ class AirtableServer {
     }
 
     return field;
+  }
+
+  private async getTablesMinimal(baseId: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.airtable.com',
+        path: `/v0/meta/bases/${baseId}/tables`,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let rawData = '';
+        
+        res.on('data', (chunk) => {
+          rawData += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(rawData);
+            if (parsed.tables && Array.isArray(parsed.tables)) {
+              // Return only minimal data
+              const minimal = parsed.tables.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                fieldCount: t.fields?.length || 0
+              }));
+              resolve(minimal);
+            } else {
+              resolve([]);
+            }
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+      
+      req.on('error', (e) => {
+        reject(e);
+      });
+      
+      req.end();
+    });
   }
 
   private truncateResponse(data: any, maxLength: number = 5000): string {
@@ -515,8 +692,17 @@ class AirtableServer {
         },
         // Base Schema Operations
         {
-          name: "get_base_schema",
-          description: "Get complete base schema including all tables and fields",
+          name: "list_cached_schemas",
+          description: "List all cached schemas with their cache IDs and metadata",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+          },
+        },
+        {
+          name: "get_base_summary", 
+          description: "Get a lightweight summary of all tables in a base (names, IDs, and field counts only)",
           inputSchema: {
             type: "object",
             properties: {
@@ -526,6 +712,39 @@ class AirtableServer {
               },
             },
             required: ["base_id"],
+          },
+        },
+        {
+          name: "get_base_schema",
+          description: "Get complete base schema including all tables and fields. For large schemas, returns a cache ID to fetch data in chunks.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              base_id: {
+                type: "string",
+                description: "ID of the base",
+              },
+              cache_id: {
+                type: "string",
+                description: "Cache ID from a previous fetch (use with chunk_offset)",
+              },
+              chunk_offset: {
+                type: "number",
+                description: "Chunk number to retrieve (0-based, use with cache_id)",
+              },
+              table_ids: {
+                type: "array",
+                description: "Optional array of specific table IDs to include in the schema. If not provided, all tables will be included.",
+                items: {
+                  type: "string",
+                },
+              },
+              use_cache: {
+                type: "boolean",
+                description: "Use caching for large schemas (default: true for full base schemas)",
+              },
+            },
+            required: [],
           },
         },
         {
@@ -1106,6 +1325,37 @@ class AirtableServer {
 
       try {
         switch (request.params.name) {
+          case "list_cached_schemas": {
+            const cached = this.schemaCache.listCached();
+            
+            if (cached.length === 0) {
+              return {
+                content: [{
+                  type: "text",
+                  text: "📭 No cached schemas found. Use get_base_schema to cache a schema.",
+                }],
+              };
+            }
+            
+            let response_text = `📦 Cached Schemas (${cached.length}):\n\n`;
+            cached.forEach((item, idx) => {
+              response_text += `${idx + 1}. Base: ${item.baseId}\n`;
+              response_text += `   Cache ID: ${item.cacheId}\n`;
+              response_text += `   Tables: ${item.tableCount}\n`;
+              response_text += `   Age: ${item.age} minutes\n`;
+              response_text += `   Size: ${(item.totalSize / 1024).toFixed(1)} KB\n\n`;
+            });
+            
+            response_text += `💡 Use cache_id with get_base_schema to retrieve chunks.`;
+            
+            return {
+              content: [{
+                type: "text",
+                text: response_text,
+              }],
+            };
+          }
+
           case "list_bases": {
             const response = await this.axiosInstance.get("/meta/bases");
             return this.formatListResponse(response.data.bases, "list_bases", "base");
@@ -1113,8 +1363,33 @@ class AirtableServer {
 
           case "list_tables": {
             const { base_id } = request.params.arguments as { base_id: string };
-            const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
-            return this.formatListResponse(response.data.tables, "list_tables", "table", base_id);
+            
+            try {
+              // Use minimal data approach
+              const tables = await this.getTablesMinimal(base_id);
+              
+              if (tables.length === 0) {
+                return {
+                  content: [{
+                    type: "text",
+                    text: `✅ list_tables completed: No tables found in base.`,
+                  }],
+                };
+              }
+              
+              const tableList = tables.map((t: any) => 
+                `• ${t.name} (${t.id}) - ${t.fieldCount} fields`
+              ).join('\n');
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: `✅ list_tables completed: Found ${tables.length} tables\n\n${tableList}\n\n💡 Use get_base_schema with table_ids or list_fields for detailed information.`,
+                }],
+              };
+            } catch (error) {
+              return this.formatErrorResponse(error, "list_tables");
+            }
           }
 
           case "create_table": {
@@ -1265,10 +1540,198 @@ class AirtableServer {
           }
 
           // Base Schema Operations
-          case "get_base_schema": {
+          case "get_base_summary": {
             const { base_id } = request.params.arguments as { base_id: string };
-            const response = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
-            return this.formatListResponse(response.data.tables, "get_base_schema", "table");
+            
+            try {
+              // First, just get the list of tables without full schema
+              const metaResponse = await this.axiosInstance.get(`/meta/bases/${base_id}`);
+              const baseName = metaResponse.data.name || 'Unknown Base';
+              
+              // Get tables metadata
+              const tablesResponse = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
+              const tables = tablesResponse.data.tables || [];
+              
+              // Create lightweight summary
+              const tableSummary = tables.map((table: any) => ({
+                id: table.id,
+                name: table.name,
+                fieldCount: table.fields?.length || 0,
+                viewCount: table.views?.length || 0
+              }));
+              
+              const tableList = tableSummary.map((t: any) => 
+                `• ${t.name} (${t.id}) - ${t.fieldCount} fields, ${t.viewCount} views`
+              ).join('\n');
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: `✅ Base Summary: ${baseName} (${base_id})
+
+📊 Total Tables: ${tables.length}
+
+📋 Table List:
+${tableList}
+
+💡 Tips:
+- Use get_base_schema with table_ids parameter to get detailed schema for specific tables
+- Use list_fields to explore fields in a specific table
+- Use list_records to see data in any table`,
+                }],
+              };
+            } catch (error) {
+              // If the direct approach fails, fall back to a simpler method
+              const tablesResponse = await this.axiosInstance.get(`/meta/bases/${base_id}/tables`);
+              const tableCount = tablesResponse.data.tables?.length || 0;
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: `✅ Base Summary: Found ${tableCount} tables
+
+⚠️ Full table details are too large to display. Use:
+- get_base_schema with limit parameter to paginate through tables
+- get_base_schema with table_ids parameter for specific tables only`,
+                }],
+              };
+            }
+          }
+
+          case "get_base_schema": {
+            const { base_id, cache_id, chunk_offset, table_ids, use_cache } = request.params.arguments as { 
+              base_id?: string;
+              cache_id?: string;
+              chunk_offset?: number;
+              table_ids?: string[];
+              use_cache?: boolean;
+            };
+            
+            try {
+              // If fetching a cached chunk
+              if (cache_id && chunk_offset !== undefined) {
+                const chunkData = this.schemaCache.getChunk(cache_id, chunk_offset);
+                
+                if (chunkData.error) {
+                  return this.formatErrorResponse(chunkData.error, "get_base_schema");
+                }
+                
+                return {
+                  content: [{
+                    type: "text",
+                    text: `📄 Schema Chunk ${chunkData.chunkIndex + 1}/${chunkData.totalChunks}\n\n${chunkData.chunk}\n\n${
+                      chunkData.hasMore 
+                        ? `➡️ Next chunk: use chunk_offset=${chunkData.chunkIndex + 1}` 
+                        : '✅ Complete schema retrieved'
+                    }`,
+                  }],
+                };
+              }
+              
+              // If specific table IDs are requested, fetch them individually (no caching needed)
+              if (table_ids && table_ids.length > 0) {
+                const tablePromises = table_ids.map(tableId => 
+                  this.axiosInstance.get(`/meta/bases/${base_id}/tables/${tableId}`)
+                    .then(res => res.data)
+                    .catch(() => null)
+                );
+                
+                const tableResponses = await Promise.all(tablePromises);
+                const tables = tableResponses.filter(t => t !== null);
+                
+                // Create minimal response
+                const minimalTables = tables.map((table: any) => ({
+                  id: table.id,
+                  name: table.name,
+                  description: table.description,
+                  fieldCount: table.fields?.length || 0,
+                  fields: table.fields?.slice(0, 10).map((f: any) => ({
+                    id: f.id,
+                    name: f.name,
+                    type: f.type
+                  }))
+                }));
+                
+                return {
+                  content: [{
+                    type: "text",
+                    text: `✅ get_base_schema completed: Found ${tables.length} table(s)\n\n${JSON.stringify(minimalTables, null, 2)}`,
+                  }],
+                };
+              }
+              
+              // For full base schema, use caching approach
+              if (!base_id) {
+                return this.formatErrorResponse("base_id is required", "get_base_schema");
+              }
+              
+              // Determine if we should use caching (default true for full schemas)
+              const shouldUseCache = use_cache !== false;
+              
+              if (shouldUseCache) {
+                // Fetch and cache the schema
+                const cacheId = await this.schemaCache.fetchAndStore(base_id, this.axiosInstance);
+                const summary = this.schemaCache.getSummary(cacheId);
+                
+                let response_text = `✅ Schema fetched and cached successfully!\n\n`;
+                response_text += `📊 Base: ${summary.baseId}\n`;
+                response_text += `📋 Total tables: ${summary.tableCount}\n\n`;
+                
+                // Show first 10 tables
+                const tablesToShow = summary.tables.slice(0, 10);
+                response_text += `Tables:\n`;
+                tablesToShow.forEach((t: any, idx: number) => {
+                  response_text += `${idx + 1}. ${t.name} (${t.id}) - ${t.fieldCount} fields, ${t.viewCount} views\n`;
+                });
+                
+                if (summary.tables.length > 10) {
+                  response_text += `... and ${summary.tables.length - 10} more tables\n`;
+                }
+                
+                response_text += `\n📦 Cache ID: ${cacheId}\n`;
+                response_text += `\n💡 To retrieve the full schema:\n`;
+                response_text += `- Use cache_id="${cacheId}" with chunk_offset=0\n`;
+                response_text += `- Continue incrementing chunk_offset to get all chunks\n`;
+                response_text += `\nExample: get_base_schema(cache_id="${cacheId}", chunk_offset=0)`;
+                
+                return {
+                  content: [{
+                    type: "text",
+                    text: response_text,
+                  }],
+                };
+              } else {
+                // Non-cached approach for smaller schemas
+                try {
+                  const minimalTables = await this.getTablesMinimal(base_id);
+                  return {
+                    content: [{
+                      type: "text",
+                      text: `✅ Found ${minimalTables.length} tables:\n${
+                        minimalTables.map((t: any, i: number) => `${i + 1}. ${t.name} (${t.id}) - ${t.fieldCount} fields`).join('\n')
+                      }`,
+                    }],
+                  };
+                } catch (error) {
+                  throw error;
+                }
+              }
+              
+            } catch (error) {
+              // If we still hit size limits, provide guidance
+              return {
+                content: [{
+                  type: "text",
+                  text: `❌ Error: The base schema is too large to retrieve in full.\n\n` +
+                        `Please use one of these approaches:\n` +
+                        `1. Use table_ids parameter to get specific tables only\n` +
+                        `2. Use limit parameter (e.g., limit=5) to paginate\n` +
+                        `3. Use get_base_summary for a lightweight overview\n` +
+                        `4. Use list_fields to explore individual tables\n\n` +
+                        `Error details: ${error}`,
+                }],
+              };
+            }
           }
 
           case "delete_base": {
